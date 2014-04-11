@@ -33,11 +33,20 @@
 #import "CCGL.h"
 
 
-@interface CCShader()
-+(GLuint)createVAOforCCVertexBuffer:(GLuint)vbo elementBuffer:(GLuint)ebo;
+//MARK Forward Declarations.
+
+
+@class CCVertexArray;
+
+@interface CCRenderer()
+-(void)bindVertexArray:(CCVertexArray *)array;
+-(void)setRenderState:(CCRenderState *)renderState;
 @end
 
+
 //MARK: NSValue Additions.
+
+
 @implementation NSValue(CCRenderer)
 
 +(NSValue *)valueWithGLKVector2:(GLKVector2)vector
@@ -63,6 +72,8 @@
 @end
 
 //MARK: Option Keys.
+
+
 const NSString *CCRenderStateBlendMode = @"CCRenderStateBlendMode";
 const NSString *CCRenderStateShader = @"CCRenderStateShader";
 const NSString *CCRenderStateShaderUniforms = @"CCRenderStateShaderUniforms";
@@ -76,6 +87,8 @@ const NSString *CCBlendEquationAlpha = @"CCBlendEquationAlpha";
 
 
 //MARK: Blend Modes.
+
+
 @interface CCBlendMode()
 
 -(instancetype)initWithOptions:(NSDictionary *)options;
@@ -223,6 +236,8 @@ static NSDictionary *CCBLEND_DISABLED_OPTIONS = nil;
 
 
 //MARK: Render States.
+
+
 @interface CCRenderState() {
 	@public
 	CCBlendMode *_blendMode;
@@ -332,24 +347,19 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 
 
 //MARK: Render Command Protocol
+
+
 @protocol CCRenderCommand <NSObject>
 -(void)invoke:(CCRenderer *)renderer;
 @end
 
 
-@interface CCRenderer()
--(void)bindVAO:(BOOL)bind;
--(void)setRenderState:(CCRenderState *)renderState;
-@end
-
-
 //MARK: Draw Command.
-@interface CCRenderCommandDraw : NSObject<CCRenderCommand>
 
-//@property(nonatomic, readonly) NSDictionary *renderOptions;
+
+@interface CCRenderCommandDraw : NSObject<CCRenderCommand>
 @property(nonatomic, readonly) GLint first;
 @property(nonatomic, readonly) GLsizei elements;
-
 @end
 
 
@@ -358,13 +368,15 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 	
 	@public
 	CCRenderState *_renderState;
+	CCVertexArray *_array;
 }
 
--(instancetype)initWithMode:(GLenum)mode renderState:(CCRenderState *)renderState first:(GLint)first elements:(GLsizei)elements
+-(instancetype)initWithMode:(GLenum)mode renderState:(CCRenderState *)renderState array:(CCVertexArray *)array first:(GLint)first elements:(GLsizei)elements
 {
 	if((self = [super init])){
 		_mode = mode;
 		_renderState = [renderState copy];
+		_array = array;
 		_first = first;
 		_elements = elements;
 	}
@@ -381,6 +393,7 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 {
 	glPushGroupMarkerEXT(0, "CCRendererCommandDraw: Invoke");
 	
+	[renderer bindVertexArray:_array];
 	[renderer setRenderState:_renderState];
 	glDrawElements(_mode, _elements, GL_UNSIGNED_SHORT, (GLvoid *)(_first*sizeof(GLushort)));
 	
@@ -391,6 +404,8 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 
 
 //MARK: Custom Block Command.
+
+
 @interface CCRenderCommandCustom : NSObject<CCRenderCommand>
 @end
 
@@ -415,7 +430,7 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 {
 	glPushGroupMarkerEXT(0, [NSString stringWithFormat:@"CCRenderCommandCustom(%@): Invoke", _debugLabel].UTF8String);
 	
-	[renderer bindVAO:NO];
+	[renderer bindVertexArray:nil];
 	_block();
 	
 	glPopGroupMarkerEXT();
@@ -424,35 +439,14 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 @end
 
 
-//MARK: Render Queue
+//MARK: Vertex Array
 
 
-/*
-TODO
-
-Things to try if sorting isn't implemented:
-* Regular CPU buffer -> VBO buffer. Can be flushed for each state change.
-* Transform directly into a mapped buffer.
-
-Things to try if sorting is implemented:
-*
-*/
-
-@implementation CCRenderer {
-	GLuint _vao;
+@interface CCVertexArray : NSObject @end
+@implementation CCVertexArray {
+	@public
 	GLuint _vbo;
 	GLuint _ebo;
-	
-	CCRenderState *_renderState;
-	NSDictionary *_blendOptions;
-	
-	CCShader *_shader;
-	NSDictionary *_shaderUniforms;
-	
-	BOOL _vaoBound;
-	
-	NSMutableArray *_queue;
-	__unsafe_unretained CCRenderCommandDraw *_lastDrawCommand;
 	
 	CCVertex *_vertexes;
 	GLsizei _vertexCount, _vertexCapacity;
@@ -460,32 +454,38 @@ Things to try if sorting is implemented:
 	GLushort *_elements;
 	GLsizei _elementCount, _elementCapacity;
 	
-	NSUInteger _statDrawCommands;
+	GLuint _vao;
 }
 
--(void)invalidateState
-{
-	_lastDrawCommand = nil;
-	_renderState = nil;
-	_blendOptions = nil;
-	_shader = nil;
-	_shaderUniforms = nil;
-	_vaoBound = NO;
-}
-
--(instancetype)init
+-(id)init
 {
 	if((self = [super init])){
 		glPushGroupMarkerEXT(0, "CCRenderer: Init");
 		
-		glGenBuffers(1, &_vbo);
-		glGenBuffers(1, &_ebo);
+		glGenVertexArrays(1, &_vao);
+		glBindVertexArray(_vao);
 		
-		_vao = [CCShader createVAOforCCVertexBuffer:_vbo elementBuffer:_ebo];
+		glEnableVertexAttribArray(CCShaderAttributePosition);
+		glEnableVertexAttribArray(CCShaderAttributeTexCoord1);
+		glEnableVertexAttribArray(CCShaderAttributeTexCoord2);
+		glEnableVertexAttribArray(CCShaderAttributeColor);
+		
+		glGenBuffers(1, &_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+		
+		glVertexAttribPointer(CCShaderAttributePosition, 4, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, position));
+		glVertexAttribPointer(CCShaderAttributeTexCoord1, 2, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, texCoord1));
+		glVertexAttribPointer(CCShaderAttributeTexCoord2, 2, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, texCoord2));
+		glVertexAttribPointer(CCShaderAttributeColor, 4, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, color));
+		
+		glGenBuffers(1, &_ebo);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
+		
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		
 		glPopGroupMarkerEXT();
-		
-		_queue = [NSMutableArray array];
 		
 		_vertexCapacity = 2*1024;
 		_vertexes = calloc(_vertexCapacity, sizeof(*_vertexes));
@@ -509,6 +509,113 @@ Things to try if sorting is implemented:
 	
 	free(_vertexes);
 	free(_elements);
+}
+
+-(CCVertex *)ensureVertexCapacity:(NSUInteger)requestedCount
+{
+	NSAssert(requestedCount > 0, @"Vertex count must be positive.");
+	
+	GLsizei required = _vertexCount + (GLsizei)requestedCount;
+	if(required > _vertexCapacity){
+		// Double the size of the buffer until it fits.
+		while(required >= _vertexCapacity) _vertexCapacity *= 2;
+		
+		_vertexes = realloc(_vertexes, _vertexCapacity*sizeof(*_vertexes));
+	}
+	
+	// Return the triangle buffer pointer.
+	return &_vertexes[_vertexCount];
+}
+
+-(GLushort *)ensureElementCapacity:(NSUInteger)requestedCount
+{
+	NSAssert(requestedCount > 0, @"Element count must be positive.");
+	
+	GLsizei required = _elementCount + (GLsizei)requestedCount;
+	if(required > _elementCapacity){
+		// Double the size of the buffer until it fits.
+		while(required >= _elementCapacity) _elementCapacity *= 2;
+		
+		_elements = realloc(_elements, _elementCapacity*sizeof(*_elements));
+	}
+	
+	// Return the triangle buffer pointer.
+	return &_elements[_elementCount];
+}
+
+-(CCRenderBuffer)bufferVertexes:(NSUInteger)vertexCount elementCount:(NSUInteger)elementCount;
+{
+	CCRenderBuffer buffer = {
+		_vertexes + _vertexCount,
+		_elements + _elementCount,
+		_vertexCount
+	};
+	
+	_vertexCount += vertexCount;
+	_elementCount += elementCount;
+	
+	return buffer;
+}
+
+-(void)prepare
+{
+	glInsertEventMarkerEXT(0, "CCVertexArray: Buffering");
+	glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+	glBufferData(GL_ARRAY_BUFFER, _vertexCount*sizeof(*_vertexes), _vertexes, GL_STREAM_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, _elementCount*sizeof(*_elements), _elements, GL_STREAM_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	CC_CHECK_GL_ERROR_DEBUG();
+}
+
+-(void)reset
+{
+	_vertexCount = 0;
+	_elementCount = 0;
+}
+
+@end
+
+
+//MARK: Render Queue
+
+
+@implementation CCRenderer {
+	CCRenderState *_renderState;
+	NSDictionary *_blendOptions;
+	
+	CCShader *_shader;
+	NSDictionary *_shaderUniforms;
+	
+	CCVertexArray *_currentArray;
+	CCVertexArray *_boundArray;
+	
+	NSMutableArray *_queue;
+	__unsafe_unretained CCRenderCommandDraw *_lastDrawCommand;
+	
+	NSUInteger _statDrawCommands;
+}
+
+-(void)invalidateState
+{
+	_lastDrawCommand = nil;
+	_renderState = nil;
+	_blendOptions = nil;
+	_shader = nil;
+	_shaderUniforms = nil;
+	_boundArray = nil;
+}
+
+-(instancetype)init
+{
+	if((self = [super init])){
+		_queue = [NSMutableArray array];
+		_currentArray = [[CCVertexArray alloc] init];
+	}
+	
+	return self;
 }
 
 static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
@@ -538,19 +645,18 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 #define glBindVertexArray glBindVertexArrayOES
 #endif
 
--(void)bindVAO:(BOOL)bind
+-(void)bindVertexArray:(CCVertexArray *)array
 {
-	if(bind != _vaoBound){
+	if(array != _boundArray){
 		glInsertEventMarkerEXT(0, "CCRenderer: Bind VAO");
-		glBindVertexArray(bind ? _vao : 0);
+		glBindVertexArray(array ? array->_vao : 0);
 		
-		_vaoBound = bind;
+		_boundArray = array;
 	}
 }
 
 -(void)setRenderState:(CCRenderState *)renderState
 {
-	[self bindVAO:YES];
 	if(renderState == _renderState) return;
 	
 	glPushGroupMarkerEXT(0, "CCRenderer: Render State");
@@ -623,80 +729,52 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 	} debugLabel:@"CCRenderer: Clear"];
 }
 
--(CCVertex *)ensureVertexCapacity:(NSUInteger)requestedCount
+-(CCVertexArray *)arrayForVertexes:(NSUInteger)vertexes andElements:(NSUInteger)elements
 {
-	NSAssert(requestedCount > 0, @"Vertex count must be positive.");
-	
-	GLsizei required = _vertexCount + (GLsizei)requestedCount;
-	if(required > _vertexCapacity){
-		// Double the size of the buffer until it fits.
-		while(required >= _vertexCapacity) _vertexCapacity *= 2;
-		
-		_vertexes = realloc(_vertexes, _vertexCapacity*sizeof(*_vertexes));
-	}
-	
-	// Return the triangle buffer pointer.
-	return &_vertexes[_vertexCount];
-}
-
--(GLushort *)ensureElementCapacity:(NSUInteger)requestedCount
-{
-	NSAssert(requestedCount > 0, @"Element count must be positive.");
-	
-	GLsizei required = _elementCount + (GLsizei)requestedCount;
-	if(required > _elementCapacity){
-		// Double the size of the buffer until it fits.
-		while(required >= _elementCapacity) _elementCapacity *= 2;
-		
-		_elements = realloc(_elements, _elementCapacity*sizeof(*_elements));
-	}
-	
-	// Return the triangle buffer pointer.
-	return &_elements[_elementCount];
+	[_currentArray ensureVertexCapacity:vertexes];
+	[_currentArray ensureElementCapacity:elements];
+	return _currentArray;
 }
 
 -(CCRenderBuffer)enqueueTriangles:(NSUInteger)triangleCount andVertexes:(NSUInteger)vertexCount withState:(CCRenderState *)renderState;
 {
+	NSUInteger elementCount = 3*triangleCount;
+	__unsafe_unretained CCVertexArray *array = [self arrayForVertexes:vertexCount andElements:elementCount];
 	__unsafe_unretained CCRenderCommandDraw *previous = _lastDrawCommand;
-	CCVertex *vertexes = [self ensureVertexCapacity:vertexCount];
-	GLushort *elements = [self ensureElementCapacity:3*triangleCount];
 	
+	//TODO doesn't check array
 	if(previous && previous->_renderState == renderState){
 		// Batch with the previous command.
 		[previous batchElements:(GLsizei)(3*triangleCount)];
 	} else {
 		// Start a new command.
-		CCRenderCommandDraw *command = [[CCRenderCommandDraw alloc] initWithMode:GL_TRIANGLES renderState:renderState first:(GLint)_elementCount elements:(GLsizei)(3*triangleCount)];
+		CCRenderCommandDraw *command = [[CCRenderCommandDraw alloc] initWithMode:GL_TRIANGLES renderState:renderState array:array first:(GLint)array->_elementCount elements:(GLsizei)(3*triangleCount)];
 		[_queue addObject:command];
 		_lastDrawCommand = command;
 	}
 	
-	CCRenderBuffer buffer = {vertexes, elements, _vertexCount};
-	_vertexCount += vertexCount;
-	_elementCount += 3*triangleCount;
-	
 	_statDrawCommands++;
-	return buffer;
+	return [array bufferVertexes:vertexCount elementCount:elementCount];
 }
 
--(CCRenderBuffer)enqueueLines:(NSUInteger)lineCount andVertexes:(NSUInteger)vertexCount withState:(CCRenderState *)renderState;
-{
-	CCVertex *vertexes = [self ensureVertexCapacity:vertexCount];
-	GLushort *elements = [self ensureElementCapacity:2*lineCount];
-	
-	CCRenderCommandDraw *command = [[CCRenderCommandDraw alloc] initWithMode:GL_LINES renderState:renderState first:(GLint)_elementCount elements:(GLsizei)(2*lineCount)];
-	[_queue addObject:command];
-	
-	// Line drawing commands are currently intended for debugging and cannot be batched.
-	_lastDrawCommand = nil;
-	
-	CCRenderBuffer buffer = {vertexes, elements, _vertexCount};
-	_vertexCount += vertexCount;
-	_elementCount += 2*lineCount;
-	
-	_statDrawCommands++;
-	return buffer;
-}
+//-(CCRenderBuffer)enqueueLines:(NSUInteger)lineCount andVertexes:(NSUInteger)vertexCount withState:(CCRenderState *)renderState;
+//{
+//	CCVertex *vertexes = [self ensureVertexCapacity:vertexCount];
+//	GLushort *elements = [self ensureElementCapacity:2*lineCount];
+//	
+//	CCRenderCommandDraw *command = [[CCRenderCommandDraw alloc] initWithMode:GL_LINES renderState:renderState first:(GLint)_elementCount elements:(GLsizei)(2*lineCount)];
+//	[_queue addObject:command];
+//	
+//	// Line drawing commands are currently intended for debugging and cannot be batched.
+//	_lastDrawCommand = nil;
+//	
+//	CCRenderBuffer buffer = {vertexes, elements, _vertexCount};
+//	_vertexCount += vertexCount;
+//	_elementCount += 2*lineCount;
+//	
+//	_statDrawCommands++;
+//	return buffer;
+//}
 
 -(void)enqueueBlock:(void (^)())block debugLabel:(NSString *)debugLabel
 {
@@ -716,26 +794,14 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 {
 	glPushGroupMarkerEXT(0, "CCRenderer: Flush");
 	
-	glInsertEventMarkerEXT(0, "Buffering");
-	
-	glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-	glBufferData(GL_ARRAY_BUFFER, _vertexCount*sizeof(*_vertexes), _vertexes, GL_STREAM_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, _elementCount*sizeof(*_elements), _elements, GL_STREAM_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	CC_CHECK_GL_ERROR_DEBUG();
-	
+	[_currentArray prepare];
 	for(CCRenderCommandDraw *command in _queue) [command invoke:self];
-	[self bindVAO:NO];
+	[_currentArray reset];
 	
-//	NSLog(@"Draw commands: %d, Draw calls: %d", _statDrawCommands, _queue.count);
+	[self bindVertexArray:nil];
+	
 	_statDrawCommands = 0;
 	[_queue removeAllObjects];
-	
-	_vertexCount = 0;
-	_elementCount = 0;
 	
 	glPopGroupMarkerEXT();
 	CC_CHECK_GL_ERROR_DEBUG();

@@ -37,14 +37,6 @@
 #import "CCGL.h"
 
 
-enum {
-	CCAttributePosition,
-	CCAttributeTexCoord1,
-	CCAttributeTexCoord2,
-	CCAttributeColor,
-};
-
-
 const NSString *CCShaderUniformProjection = @"cc_Projection";
 const NSString *CCShaderUniformProjectionInv = @"cc_ProjectionInv";
 const NSString *CCShaderUniformViewSize = @"cc_ViewSize";
@@ -189,36 +181,6 @@ CompileShader(GLenum type, const char *source)
 
 @implementation CCShader {
 	BOOL _ownsProgram;
-}
-
-+(GLuint)createVAOforCCVertexBuffer:(GLuint)vbo elementBuffer:(GLuint)ebo
-{
-	glPushGroupMarkerEXT(0, "CCShader: Creating vertex buffer");
-	
-	GLuint vao = 0;
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	glEnableVertexAttribArray(CCAttributePosition);
-	glEnableVertexAttribArray(CCAttributeTexCoord1);
-	glEnableVertexAttribArray(CCAttributeTexCoord2);
-	glEnableVertexAttribArray(CCAttributeColor);
-	
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glVertexAttribPointer(CCAttributePosition, 4, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, position));
-	glVertexAttribPointer(CCAttributeTexCoord1, 2, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, texCoord1));
-	glVertexAttribPointer(CCAttributeTexCoord2, 2, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, texCoord2));
-	glVertexAttribPointer(CCAttributeColor, 4, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, color));
-	
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-
-	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	
-	glPopGroupMarkerEXT();
-	
-	return vao;
 }
 
 //MARK: Uniform Setters:
@@ -372,10 +334,10 @@ SetMat4(NSString *name, GLint location)
 	glPushGroupMarkerEXT(0, "CCShader: Init");
 	
 	GLuint program = glCreateProgram();
-	glBindAttribLocation(program, CCAttributePosition, "cc_Position");
-	glBindAttribLocation(program, CCAttributeTexCoord1, "cc_TexCoord1");
-	glBindAttribLocation(program, CCAttributeTexCoord2, "cc_TexCoord2");
-	glBindAttribLocation(program, CCAttributeColor, "cc_Color");
+	glBindAttribLocation(program, CCShaderAttributePosition, "cc_Position");
+	glBindAttribLocation(program, CCShaderAttributeTexCoord1, "cc_TexCoord1");
+	glBindAttribLocation(program, CCShaderAttributeTexCoord2, "cc_TexCoord2");
+	glBindAttribLocation(program, CCShaderAttributeColor, "cc_Color");
 	
 	GLint vshader = CompileShader(GL_VERTEX_SHADER, vertexSource.UTF8String);
 	glAttachShader(program, vshader);
