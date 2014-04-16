@@ -463,14 +463,15 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 	@public
 	GLuint _vbo;
 	GLuint _ebo;
+	GLuint _vao;
+	
+	GLsync _sync;
 	
 	CCVertex *_vertexes;
 	GLsizei _vertexCount, _vertexCapacity;
 	
 	GLushort *_elements;
 	GLsizei _elementCount, _elementCapacity;
-	
-	GLuint _vao;
 }
 
 -(id)initWithVertexes:(NSUInteger)vertexes elements:(NSUInteger)elements
@@ -510,7 +511,7 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 		glPopGroupMarkerEXT();
 		CC_CHECK_GL_ERROR_DEBUG();
 		
-		[self reset];
+		[self map];
 	}
 	
 	return self;
@@ -520,7 +521,7 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 {
 	glPushGroupMarkerEXT(0, "CCVertexArray: Dealloc");
 	
-	NSLog(@"Deleting %d %d %d", _vao, _vbo, _ebo);
+//	NSLog(@"Deleting %d %d %d", _vao, _vbo, _ebo);
 	glDeleteVertexArrays(1, &_vao);
 	glDeleteBuffers(1, &_vbo);
 	glDeleteBuffers(1, &_ebo);
@@ -543,7 +544,7 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 	return buffer;
 }
 
--(void)prepare
+-(void)unmap
 {
 	_vertexes = NULL;
 	_elements = NULL;
@@ -551,12 +552,12 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 	glPushGroupMarkerEXT(0, "CCVertexArray: Unmapping buffers.");
 	
 	glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-//	glFlushMappedBufferRangeEXT(GL_ARRAY_BUFFER, 0, _vertexCount*sizeof(*_vertexes));
+	glFlushMappedBufferRangeEXT(GL_ARRAY_BUFFER, 0, _vertexCount*sizeof(*_vertexes));
 	glUnmapBufferOES(GL_ARRAY_BUFFER);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
-//	glFlushMappedBufferRangeEXT(GL_ELEMENT_ARRAY_BUFFER, 0, _elementCount*sizeof(*_elements));
+	glFlushMappedBufferRangeEXT(GL_ELEMENT_ARRAY_BUFFER, 0, _elementCount*sizeof(*_elements));
 	glUnmapBufferOES(GL_ELEMENT_ARRAY_BUFFER);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	
@@ -564,32 +565,46 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 	CC_CHECK_GL_ERROR_DEBUG();
 }
 
--(void)reset
+-(void)sync
 {
-	NSAssert(!_vertexes && !_elements, @"CCVertexArray Error: Buffers are already mapped.");
-	
-	_vertexCount = 0;
-	_elementCount = 0;
-	
-	const GLbitfield accessModifiers = 
-		GL_MAP_WRITE_BIT_EXT |
-		GL_MAP_INVALIDATE_BUFFER_BIT_EXT |
-		GL_MAP_FLUSH_EXPLICIT_BIT_EXT;
-	
-	glPushGroupMarkerEXT(0, "CCVertexArray: Mapping buffers.");
-	
-	glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-//	_vertexes = glMapBufferRangeEXT(GL_ARRAY_BUFFER, 0, _vertexCapacity*sizeof(*_vertexes), accessModifiers);
-	_vertexes = glMapBufferOES(GL_ARRAY_BUFFER, GL_WRITE_ONLY_OES);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
-//	_elements = glMapBufferRangeEXT(GL_ELEMENT_ARRAY_BUFFER, 0, _elementCapacity*sizeof(*_elements), accessModifiers);
-	_elements = glMapBufferOES(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY_OES);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	
-	glPopGroupMarkerEXT();
-	CC_CHECK_GL_ERROR_DEBUG();
+	_sync = glFenceSyncAPPLE(GL_SYNC_GPU_COMMANDS_COMPLETE_APPLE, 0);
+}
+
+-(BOOL)map
+{
+	if(_sync == NULL || glClientWaitSyncAPPLE(_sync, GL_SYNC_FLUSH_COMMANDS_BIT_APPLE, 0) == GL_ALREADY_SIGNALED_APPLE){
+		NSAssert(!_vertexes && !_elements, @"CCVertexArray Error: Buffers are already mapped.");
+		
+		_vertexCount = 0;
+		_elementCount = 0;
+		
+		const GLbitfield accessModifiers = 
+			GL_MAP_WRITE_BIT_EXT |
+			GL_MAP_INVALIDATE_BUFFER_BIT_EXT |
+			GL_MAP_FLUSH_EXPLICIT_BIT_EXT |
+			GL_MAP_UNSYNCHRONIZED_BIT_EXT;
+		
+		glPushGroupMarkerEXT(0, "CCVertexArray: Mapping buffers.");
+		
+		glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+		_vertexes = glMapBufferRangeEXT(GL_ARRAY_BUFFER, 0, _vertexCapacity*sizeof(*_vertexes), accessModifiers);
+		//_vertexes = glMapBufferOES(GL_ARRAY_BUFFER, GL_WRITE_ONLY_OES);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
+		_elements = glMapBufferRangeEXT(GL_ELEMENT_ARRAY_BUFFER, 0, _elementCapacity*sizeof(*_elements), accessModifiers);
+		//_elements = glMapBufferOES(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY_OES);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		
+		glPopGroupMarkerEXT();
+		CC_CHECK_GL_ERROR_DEBUG();
+		
+		glDeleteSyncAPPLE(_sync);
+		_sync = NULL;
+		return YES;
+	} else {
+		return NO;
+	}
 }
 
 @end
@@ -788,8 +803,8 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 
 -(CCRenderBuffer)enqueueTriangles:(NSUInteger)triangleCount andVertexes:(NSUInteger)vertexCount withState:(CCRenderState *)renderState;
 {
-	NSUInteger elementCount = 3*triangleCount;
-	__unsafe_unretained CCVertexArray *array = [self arrayForVertexes:vertexCount andElements:elementCount];
+	GLsizei elementCount = 3*(GLsizei)triangleCount;
+	__unsafe_unretained CCVertexArray *array = [self arrayForVertexes:(GLsizei)vertexCount andElements:elementCount];
 	__unsafe_unretained CCRenderCommandDraw *previous = _lastDrawCommand;
 	
 	//TODO doesn't check array
@@ -809,8 +824,8 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 
 -(CCRenderBuffer)enqueueLines:(NSUInteger)lineCount andVertexes:(NSUInteger)vertexCount withState:(CCRenderState *)renderState;
 {
-	NSUInteger elementCount = 3*lineCount;
-	__unsafe_unretained CCVertexArray *array = [self arrayForVertexes:vertexCount andElements:elementCount];
+	GLsizei elementCount = 3*(GLsizei)lineCount;
+	__unsafe_unretained CCVertexArray *array = [self arrayForVertexes:(GLsizei)vertexCount andElements:elementCount];
 	__unsafe_unretained CCRenderCommandDraw *previous = _lastDrawCommand;
 	
 	CCRenderCommandDraw *command = [[CCRenderCommandDraw alloc] initWithMode:GL_TRIANGLES renderState:renderState array:array first:(GLint)array->_elementCount elements:elementCount];
@@ -845,9 +860,7 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 	_currentArray = nil;
 	
 	// Unbind the arrays.
-	for(CCVertexArray *array in _queuedArrays) [array prepare];
-	[_busyArrays addObjectsFromArray:_queuedArrays];
-	[_queuedArrays removeAllObjects];
+	for(CCVertexArray *array in _queuedArrays) [array unmap];
 	
 	glPushGroupMarkerEXT(0, "CCRenderer: Flush");
 	
@@ -858,15 +871,23 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 	// Need to unbind the VAO before fiddling with the buffers.
 	[self bindVertexArray:nil];
 	
-	// Remap the arrays.
+	// Add a fence sync object to all of the newly queued arrays so we know when they are ready again.
+	for(CCVertexArray *array in _queuedArrays) [array sync];
+	
+	// Attempt to remap some of the busy array.
 	for(CCVertexArray *array in [_busyArrays copy]){
-		[array reset];
-		[_pooledArrays addObject:array];
-		[_busyArrays removeObject:array];
+		if([array map]){
+			[_pooledArrays addObject:array];
+			[_busyArrays removeObject:array];
+		}
 	}
 	
 	glPopGroupMarkerEXT();
 	CC_CHECK_GL_ERROR_DEBUG();
+	
+	// Mark the queued arrays as busy since we just submitted them to the GPU
+	[_busyArrays addObjectsFromArray:_queuedArrays];
+	[_queuedArrays removeAllObjects];
 	
 	_statDrawCommands = 0;
 	
