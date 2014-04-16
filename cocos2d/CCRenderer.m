@@ -752,7 +752,7 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 	} debugLabel:@"CCRenderer: Clear"];
 }
 
--(CCVertexArray *)arrayForVertexes:(NSUInteger)vertexes andElements:(NSUInteger)elements
+-(CCVertexArray *)arrayForVertexes:(GLsizei)vertexes andElements:(GLsizei)elements
 {
 	if(_currentArray == nil){
 		// Search for an empty array large enough in the pool.
@@ -798,7 +798,7 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 		[previous batchElements:(GLsizei)(3*triangleCount)];
 	} else {
 		// Start a new command.
-		CCRenderCommandDraw *command = [[CCRenderCommandDraw alloc] initWithMode:GL_TRIANGLES renderState:renderState array:array first:(GLint)array->_elementCount elements:(GLsizei)(3*triangleCount)];
+		CCRenderCommandDraw *command = [[CCRenderCommandDraw alloc] initWithMode:GL_TRIANGLES renderState:renderState array:array first:(GLint)array->_elementCount elements:elementCount];
 		[_queue addObject:command];
 		_lastDrawCommand = command;
 	}
@@ -807,24 +807,21 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 	return [array bufferVertexes:vertexCount elementCount:elementCount];
 }
 
-//-(CCRenderBuffer)enqueueLines:(NSUInteger)lineCount andVertexes:(NSUInteger)vertexCount withState:(CCRenderState *)renderState;
-//{
-//	CCVertex *vertexes = [self ensureVertexCapacity:vertexCount];
-//	GLushort *elements = [self ensureElementCapacity:2*lineCount];
-//	
-//	CCRenderCommandDraw *command = [[CCRenderCommandDraw alloc] initWithMode:GL_LINES renderState:renderState first:(GLint)_elementCount elements:(GLsizei)(2*lineCount)];
-//	[_queue addObject:command];
-//	
-//	// Line drawing commands are currently intended for debugging and cannot be batched.
-//	_lastDrawCommand = nil;
-//	
-//	CCRenderBuffer buffer = {vertexes, elements, _vertexCount};
-//	_vertexCount += vertexCount;
-//	_elementCount += 2*lineCount;
-//	
-//	_statDrawCommands++;
-//	return buffer;
-//}
+-(CCRenderBuffer)enqueueLines:(NSUInteger)lineCount andVertexes:(NSUInteger)vertexCount withState:(CCRenderState *)renderState;
+{
+	NSUInteger elementCount = 3*lineCount;
+	__unsafe_unretained CCVertexArray *array = [self arrayForVertexes:vertexCount andElements:elementCount];
+	__unsafe_unretained CCRenderCommandDraw *previous = _lastDrawCommand;
+	
+	CCRenderCommandDraw *command = [[CCRenderCommandDraw alloc] initWithMode:GL_TRIANGLES renderState:renderState array:array first:(GLint)array->_elementCount elements:elementCount];
+	[_queue addObject:command];
+	
+	// Line drawing commands are currently intended for debugging and cannot be batched.
+	_lastDrawCommand = nil;
+	
+	_statDrawCommands++;
+	return [array bufferVertexes:vertexCount elementCount:elementCount];
+}
 
 -(void)enqueueBlock:(void (^)())block debugLabel:(NSString *)debugLabel
 {
@@ -843,7 +840,6 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 -(void)flush
 {
 //	NSLog(@"Flush");
-	glPushGroupMarkerEXT(0, "CCRenderer: Flush");
 	
 	[_queuedArrays addObject:_currentArray];
 	_currentArray = nil;
@@ -853,6 +849,8 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 	[_busyArrays addObjectsFromArray:_queuedArrays];
 	[_queuedArrays removeAllObjects];
 	
+	glPushGroupMarkerEXT(0, "CCRenderer: Flush");
+	
 	// Execute rendering commands.
 	for(CCRenderCommandDraw *command in _queue) [command invoke:self];
 	[_queue removeAllObjects];
@@ -860,17 +858,17 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 	// Need to unbind the VAO before fiddling with the buffers.
 	[self bindVertexArray:nil];
 	
-	// Rebind the arrays.
+	// Remap the arrays.
 	for(CCVertexArray *array in [_busyArrays copy]){
 		[array reset];
 		[_pooledArrays addObject:array];
 		[_busyArrays removeObject:array];
 	}
 	
-	_statDrawCommands = 0;
-	
 	glPopGroupMarkerEXT();
 	CC_CHECK_GL_ERROR_DEBUG();
+	
+	_statDrawCommands = 0;
 	
 //	CC_INCREMENT_GL_DRAWS(1);
 }
