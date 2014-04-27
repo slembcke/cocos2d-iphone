@@ -105,11 +105,11 @@ CCRenderCheckVisbility(const GLKMatrix4 *transform, GLKVector2 center, GLKVector
 	// Center point in clip coordinates.
 	GLKVector4 csc = GLKMatrix4MultiplyVector4(*transform, GLKVector4Make(center.x, center.y, 0.0f, 1.0f));
 	
-	// x, y in clip space.
+	// x, y extents in clip space.
 	float cshx = fmaxf(fabsf(extents.x*transform->m00 + extents.y*transform->m10), fabsf(extents.x*transform->m00 - extents.y*transform->m10));
 	float cshy = fmaxf(fabsf(extents.x*transform->m01 + extents.y*transform->m11), fabsf(extents.x*transform->m01 - extents.y*transform->m11));
 	
-	// Check the bounds against the clip space viewport using a conservative w-value.
+	// Check the bounds against the viewport [-1, 1] using a conservative perspective divide value.
 	float w = fabs(csc.w) + fmaxf(fabsf(extents.x*transform->m03 + extents.y*transform->m13), fabsf(extents.x*transform->m03 - extents.y*transform->m13));
 	return ((fabs(csc.x) - cshx < w) && (fabs(csc.y) - cshy < w));
 }

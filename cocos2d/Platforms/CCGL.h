@@ -44,8 +44,8 @@
 #endif
 
 #if DEBUG
-#define CC_CHECK_GL_ERROR_DEBUG() __CC_CHECK_GL_ERROR_DEBUG(__FUNCTION__, __LINE__)
-static inline void __CC_CHECK_GL_ERROR_DEBUG(const char *function, int line)
+#define CC_CHECK_GL_ERROR_DEBUG() __CC_CHECK_GL_ERROR_DEBUG(__FUNCTION__, __FILE__, __LINE__)
+static inline void __CC_CHECK_GL_ERROR_DEBUG(const char *function, char *file, int line)
 {
 	GLenum error;
 	while((error = glGetError())){
@@ -54,7 +54,7 @@ static inline void __CC_CHECK_GL_ERROR_DEBUG(const char *function, int line)
 			case GL_INVALID_VALUE: printf("OpenGL error GL_INVALID_VALUE detected at %s %d\n", function, line); break;
 			case GL_INVALID_OPERATION: printf("OpenGL error GL_INVALID_OPERATION detected at %s %d\n", function, line); break;
 			case GL_INVALID_FRAMEBUFFER_OPERATION: printf("OpenGL error GL_INVALID_FRAMEBUFFER_OPERATION detected at %s %d\n", function, line); break;
-			default: printf("OpenGL error 0x%04X detected at %s %d\n", error, function, line);
+			default: printf("OpenGL error 0x%04X detected at %s %s:%d\n", error, function, file, line);
 		}
 	}
 }
