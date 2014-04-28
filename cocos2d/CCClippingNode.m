@@ -230,7 +230,7 @@ SetProgram(CCNode *n, CCShader *p, NSNumber *alpha) {
 			glStencilOp(_inverted ? GL_ZERO : GL_REPLACE, GL_KEEP, GL_KEEP);
 			
 //			NSLog(@"Stencil setup.");
-		} debugLabel:@"CCClippingNode: Setup Stencil"];
+		} debugLabel:@"CCClippingNode: Setup Stencil" threadsafe:NO];
 		
 		// since glAlphaTest do not exists in OES, use a shader that writes
 		// pixel only if greater than an alpha threshold
@@ -260,7 +260,7 @@ SetProgram(CCNode *n, CCShader *p, NSNumber *alpha) {
 			//         do not draw the pixel but keep the current layer in the stencil buffer
 			glStencilFunc(GL_EQUAL, mask_layer_le, mask_layer_le);
 			glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-		} debugLabel:@"CCClippingNode: Setup Children"];
+		} debugLabel:@"CCClippingNode: Setup Children" threadsafe:NO];
   
     // draw (according to the stencil test func) this node and its childs
     [super visit:renderer parentTransform:parentTransform];
@@ -276,7 +276,7 @@ SetProgram(CCNode *n, CCShader *p, NSNumber *alpha) {
 			if (!currentStencilEnabled) {
 					glDisable(GL_STENCIL_TEST);
 			}
-		} debugLabel:@"CCClippingNode: Restore"];
+		} debugLabel:@"CCClippingNode: Restore" threadsafe:NO];
   
     // we are done using this layer, decrement
     layer--;

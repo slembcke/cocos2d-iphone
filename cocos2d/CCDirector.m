@@ -333,20 +333,22 @@ static CCDirector *_sharedDirector = nil;
 		_winSizeInPoints = size;
 		__ccContentScaleFactor = scale;
 
-		// it could be nil
-		if( view ) {
-			[self createStatsLabel];
-			[self setProjection: _projection];
+		CCRenderThreadExecute(^{
+			// it could be nil
+			if( view ) {
+				[self createStatsLabel];
+				[self setProjection: _projection];
+				
+				// TODO this should probably migrate somewhere else.
+				glEnable(GL_DEPTH_TEST);
+				glDepthFunc(GL_LEQUAL);
+			}
+
+			// Dump info once OpenGL was initilized
+			[[CCConfiguration sharedConfiguration] dumpInfo];
 			
-			// TODO this should probably migrate somewhere else.
-			glEnable(GL_DEPTH_TEST);
-			glDepthFunc(GL_LEQUAL);
-		}
-
-		// Dump info once OpenGL was initilized
-		[[CCConfiguration sharedConfiguration] dumpInfo];
-
-		CC_CHECK_GL_ERROR_DEBUG();
+			CC_CHECK_GL_ERROR_DEBUG();
+		});
 	}
 }
 

@@ -100,8 +100,6 @@ static char * glExtensions;
 		}
 	}
 
-	CC_CHECK_GL_ERROR_DEBUG();
-
 	return self;
 }
 
@@ -205,6 +203,8 @@ static char * glExtensions;
 		
 		_openGLInitialized = YES;
 	}
+	
+	CC_CHECK_GL_ERROR_DEBUG();
 }
 
 -(GLint) maxTextureSize
@@ -312,6 +312,7 @@ static char * glExtensions;
 	printf("cocos2d: GL supports discard_framebuffer: %s\n", (_supportsDiscardFramebuffer ? "YES" : "NO") );
 	printf("cocos2d: GL supports shareable VAO: %s\n", (_supportsShareableVAO ? "YES" : "NO") );
 	
+	CC_CHECK_GL_ERROR_DEBUG();
 #endif // DEBUG
 }
 @end

@@ -548,15 +548,10 @@ typedef struct {
 		if( i > 0 && (width != height || CCNextPOT(width) != width ) )
 			CCLOGWARN(@"cocos2d: TexturePVR. WARNING. Mipmap level %u is not squared. Texture won't render correctly. width=%u != height=%u", i, width, height);
 
-		err = glGetError();
-		if (err != GL_NO_ERROR)
-		{
-			CCLOGWARN(@"cocos2d: TexturePVR: Error uploading compressed texture level: %u . glError: 0x%04X", i, err);
-			return NO;
-		}
-
 		width = MAX(width >> 1, 1);
 		height = MAX(height >> 1, 1);
+		
+		CC_CHECK_GL_ERROR_DEBUG();
 	}
 	
 	return YES;
@@ -696,7 +691,8 @@ typedef struct {
 
 	if (_name != 0 && ! _retainName )
 		glDeleteTextures(1, &_name);
-
+	
+	CC_CHECK_GL_ERROR_DEBUG();
 }
 
 @end

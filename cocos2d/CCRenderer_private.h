@@ -47,3 +47,10 @@ extern id CCRENDERSTATE_CACHE;
 -(void)flush;
 
 @end
+
+// Enable multi-threaded rendering.
+//void CCRenderThreadEnable(BOOL enable);
+
+// Execute a block on the GL thread synchronously or asynchronously.
+//void CCRenderThreadExecuteAsync(void (^block)());
+void CCRenderThreadExecute(void (^block)());

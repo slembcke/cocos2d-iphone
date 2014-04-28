@@ -331,27 +331,31 @@ SetMat4(NSString *name, GLint location)
 
 -(instancetype)initWithVertexShaderSource:(NSString *)vertexSource fragmentShaderSource:(NSString *)fragmentSource
 {
-	glPushGroupMarkerEXT(0, "CCShader: Init");
-	
-	GLuint program = glCreateProgram();
-	glBindAttribLocation(program, CCShaderAttributePosition, "cc_Position");
-	glBindAttribLocation(program, CCShaderAttributeTexCoord1, "cc_TexCoord1");
-	glBindAttribLocation(program, CCShaderAttributeTexCoord2, "cc_TexCoord2");
-	glBindAttribLocation(program, CCShaderAttributeColor, "cc_Color");
-	
-	GLint vshader = CompileShader(GL_VERTEX_SHADER, vertexSource.UTF8String);
-	glAttachShader(program, vshader);
-	
-	GLint fshader = CompileShader(GL_FRAGMENT_SHADER, fragmentSource.UTF8String);
-	glAttachShader(program, fshader);
-	
-	glLinkProgram(program);
-	NSCAssert(CCCheckShaderError(program, GL_LINK_STATUS, glGetProgramiv, glGetProgramInfoLog), @"Error linking shader program");
-	
-	glDeleteShader(vshader);
-	glDeleteShader(fshader);
-	
-	glPopGroupMarkerEXT();
+	__block GLuint program = 0;
+	CCRenderThreadExecute(^{
+		glPushGroupMarkerEXT(0, "CCShader: Init");
+		
+		program = glCreateProgram();
+		glBindAttribLocation(program, CCShaderAttributePosition, "cc_Position");
+		glBindAttribLocation(program, CCShaderAttributeTexCoord1, "cc_TexCoord1");
+		glBindAttribLocation(program, CCShaderAttributeTexCoord2, "cc_TexCoord2");
+		glBindAttribLocation(program, CCShaderAttributeColor, "cc_Color");
+		
+		GLint vshader = CompileShader(GL_VERTEX_SHADER, vertexSource.UTF8String);
+		glAttachShader(program, vshader);
+		
+		GLint fshader = CompileShader(GL_FRAGMENT_SHADER, fragmentSource.UTF8String);
+		glAttachShader(program, fshader);
+		
+		glLinkProgram(program);
+		NSCAssert(CCCheckShaderError(program, GL_LINK_STATUS, glGetProgramiv, glGetProgramInfoLog), @"Error linking shader program");
+		
+		glDeleteShader(vshader);
+		glDeleteShader(fshader);
+		
+		CC_CHECK_GL_ERROR_DEBUG();
+		glPopGroupMarkerEXT();
+	});
 	
 	return [self initWithProgram:program uniformSetters:[self uniformSettersForProgram:program] ownsProgram:YES];
 }

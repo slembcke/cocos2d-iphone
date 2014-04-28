@@ -150,8 +150,6 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
         /** Multiple touch default enabled
          */
         self.multipleTouchEnabled = YES;
-
-		CC_CHECK_GL_ERROR_DEBUG();
 	}
 
 	return self;
@@ -172,8 +170,6 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 		if( ! [self setupSurfaceWithSharegroup:nil] ) {
 			return nil;
 		}
-
-		CC_CHECK_GL_ERROR_DEBUG();
     }
 
     return self;
@@ -201,10 +197,11 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 		return NO;
 
 	_context = [_renderer context];
-
+	
+	[EAGLContext setCurrentContext:_context];
 	_discardFramebufferSupported = [[CCConfiguration sharedConfiguration] supportsDiscardFramebuffer];
-
 	CC_CHECK_GL_ERROR_DEBUG();
+	[EAGLContext setCurrentContext:nil];
 
 	return YES;
 }
@@ -217,7 +214,10 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 
 - (void) layoutSubviews
 {
+	EAGLContext *current = [EAGLContext currentContext];
+	[EAGLContext setCurrentContext:self.context];
 	[_renderer resizeFromLayer:(CAEAGLLayer*)self.layer];
+	[EAGLContext setCurrentContext:current];
 
 	_size = [_renderer backingSize];
 

@@ -33,6 +33,7 @@
 #ifdef __CC_PLATFORM_IOS
 
 #import "CCES2Renderer.h"
+#import "CCConfiguration.h"
 
 #import "../CCGL.h"
 #import "../../ccMacros.h"
@@ -88,8 +89,11 @@
 			glBindFramebuffer(GL_FRAMEBUFFER, _msaaFramebuffer);
 			
 		}
-
+		
+		// TEMP call this to force it to cache the GL setup.
+		[[CCConfiguration sharedConfiguration] supportsDiscardFramebuffer];
 		CC_CHECK_GL_ERROR_DEBUG();
+		[EAGLContext setCurrentContext:nil];
     }
 
     return self;
@@ -241,7 +245,7 @@
     if ([EAGLContext currentContext] == _context)
         [EAGLContext setCurrentContext:nil];
 
-
+	CC_CHECK_GL_ERROR_DEBUG();
 }
 
 @end

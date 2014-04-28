@@ -199,7 +199,7 @@ extern const NSString *CCBlendEquationAlpha;
 -(CCRenderBuffer)enqueueLines:(NSUInteger)lineCount andVertexes:(NSUInteger)vertexCount withState:(CCRenderState *)renderState;
 
 /// Enqueue a block that performs GL commands. The debugLabel is optional and will show up in in the GLES frame debugger.
--(void)enqueueBlock:(void (^)())block debugLabel:(NSString *)debugLabel;
+-(void)enqueueBlock:(void (^)())block debugLabel:(NSString *)debugLabel threadsafe:(BOOL)threadsafe;
 
 /// Enqueue a method that performs GL commands.
 -(void)enqueueMethod:(SEL)selector target:(id)target;

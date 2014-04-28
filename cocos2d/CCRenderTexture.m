@@ -142,65 +142,67 @@
 
 -(void)create
 {
-	glPushGroupMarkerEXT(0, "CCRenderTexture: Create");
-	
-	int pixelW = _size.width*_contentScale;
-	int pixelH = _size.height*_contentScale;
+	CCRenderThreadExecute(^{
+		glPushGroupMarkerEXT(0, "CCRenderTexture: Create");
+		
+		int pixelW = _size.width*_contentScale;
+		int pixelH = _size.height*_contentScale;
 
-	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &_oldFBO);
+		glGetIntegerv(GL_FRAMEBUFFER_BINDING, &_oldFBO);
 
-	// textures must be power of two
-	NSUInteger powW;
-	NSUInteger powH;
+		// textures must be power of two
+		NSUInteger powW;
+		NSUInteger powH;
 
-	if( [[CCConfiguration sharedConfiguration] supportsNPOT] ) {
-		powW = pixelW;
-		powH = pixelH;
-	} else {
-		powW = CCNextPOT(pixelW);
-		powH = CCNextPOT(pixelH);
-	}
-
-	void *data = calloc(powW*powH, 4);
-
-	CCTexture *texture = [[CCTexture alloc] initWithData:data pixelFormat:_pixelFormat pixelsWide:powW pixelsHigh:powH contentSizeInPixels:CGSizeMake(pixelW, pixelH) contentScale:_contentScale];
-	self.texture = texture;
-	
-	free(data);
-
-	GLint oldRBO;
-	glGetIntegerv(GL_RENDERBUFFER_BINDING, &oldRBO);
-
-	// generate FBO
-	glGenFramebuffers(1, &_FBO);
-	glBindFramebuffer(GL_FRAMEBUFFER, _FBO);
-
-	// associate texture with FBO
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.texture.name, 0);
-
-	if(_depthStencilFormat){
-		//create and attach depth buffer
-		glGenRenderbuffers(1, &_depthRenderBufffer);
-		glBindRenderbuffer(GL_RENDERBUFFER, _depthRenderBufffer);
-		glRenderbufferStorage(GL_RENDERBUFFER, _depthStencilFormat, (GLsizei)powW, (GLsizei)powH);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depthRenderBufffer);
-
-		// if depth format is the one with stencil part, bind same render buffer as stencil attachment
-		if(_depthStencilFormat == GL_DEPTH24_STENCIL8){
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, _depthRenderBufffer);
+		if( [[CCConfiguration sharedConfiguration] supportsNPOT] ) {
+			powW = pixelW;
+			powH = pixelH;
+		} else {
+			powW = CCNextPOT(pixelW);
+			powH = CCNextPOT(pixelH);
 		}
-	}
 
-	// check if it worked (probably worth doing :) )
-	NSAssert( glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, @"Could not attach texture to framebuffer");
+		void *data = calloc(powW*powH, 4);
 
-	[self.texture setAliasTexParameters];
-	
-	glBindRenderbuffer(GL_RENDERBUFFER, oldRBO);
-	glBindFramebuffer(GL_FRAMEBUFFER, _oldFBO);
-	
-	CC_CHECK_GL_ERROR_DEBUG();
-	glPopGroupMarkerEXT();
+		CCTexture *texture = [[CCTexture alloc] initWithData:data pixelFormat:_pixelFormat pixelsWide:powW pixelsHigh:powH contentSizeInPixels:CGSizeMake(pixelW, pixelH) contentScale:_contentScale];
+		self.texture = texture;
+		
+		free(data);
+
+		GLint oldRBO;
+		glGetIntegerv(GL_RENDERBUFFER_BINDING, &oldRBO);
+
+		// generate FBO
+		glGenFramebuffers(1, &_FBO);
+		glBindFramebuffer(GL_FRAMEBUFFER, _FBO);
+
+		// associate texture with FBO
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.texture.name, 0);
+
+		if(_depthStencilFormat){
+			//create and attach depth buffer
+			glGenRenderbuffers(1, &_depthRenderBufffer);
+			glBindRenderbuffer(GL_RENDERBUFFER, _depthRenderBufffer);
+			glRenderbufferStorage(GL_RENDERBUFFER, _depthStencilFormat, (GLsizei)powW, (GLsizei)powH);
+			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depthRenderBufffer);
+
+			// if depth format is the one with stencil part, bind same render buffer as stencil attachment
+			if(_depthStencilFormat == GL_DEPTH24_STENCIL8){
+				glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, _depthRenderBufffer);
+			}
+		}
+
+		// check if it worked (probably worth doing :) )
+		NSAssert( glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, @"Could not attach texture to framebuffer");
+
+		[self.texture setAliasTexParameters];
+		
+		glBindRenderbuffer(GL_RENDERBUFFER, oldRBO);
+		glBindFramebuffer(GL_FRAMEBUFFER, _oldFBO);
+		
+		CC_CHECK_GL_ERROR_DEBUG();
+		glPopGroupMarkerEXT();
+	});
 	
 	CGRect rect = CGRectMake(0, 0, _size.width, _size.height);
 	_sprite.texture = self.texture;
@@ -281,7 +283,7 @@
 		
 		glGetIntegerv(GL_FRAMEBUFFER_BINDING, &_oldFBO);
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-	} debugLabel:@"CCRenderTexture: Bind FBO"];
+	} debugLabel:@"CCRenderTexture: Bind FBO" threadsafe:NO];
 }
 
 -(void)beginWithClear:(float)r g:(float)g b:(float)b a:(float)a depth:(float)depthValue stencil:(int)stencilValue flags:(GLbitfield)flags
@@ -309,7 +311,7 @@
 	[_renderer enqueueBlock:^{
 		glBindFramebuffer(GL_FRAMEBUFFER, _oldFBO);
 		glViewport(_oldViewport.v[0], _oldViewport.v[1], _oldViewport.v[2], _oldViewport.v[3]);
-	} debugLabel:@"CCRenderTexture: Restore FBO"];
+	} debugLabel:@"CCRenderTexture: Restore FBO" threadsafe:NO];
 	
 	if(_privateRenderer){
 		[_renderer flush];

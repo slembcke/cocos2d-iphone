@@ -86,6 +86,7 @@
 #import "CCTexture_Private.h"
 #import "CCTextureCache.h"
 #import "CCSpriteFrame.h"
+#import "CCRenderer_private.h"
 
 
 //CLASS IMPLEMENTATIONS:
@@ -183,68 +184,71 @@ static CCTexture *CCTextureNone = nil;
 - (id) initWithData:(const void*)data pixelFormat:(CCTexturePixelFormat)pixelFormat pixelsWide:(NSUInteger)width pixelsHigh:(NSUInteger)height contentSizeInPixels:(CGSize)sizeInPixels contentScale:(CGFloat)contentScale
 {
 	if((self = [super init])) {
-		glPushGroupMarkerEXT(0, "CCTexture: Init");
-		
-		// XXX: 32 bits or POT textures uses UNPACK of 4 (is this correct ??? )
-		if( pixelFormat == CCTexturePixelFormat_RGBA8888 || ( CCNextPOT(width)==width && CCNextPOT(height)==height) )
-			glPixelStorei(GL_UNPACK_ALIGNMENT,4);
-		else
-			glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+		CCRenderThreadExecute(^{
+			glPushGroupMarkerEXT(0, "CCTexture: Init");
+			
+			// XXX: 32 bits or POT textures uses UNPACK of 4 (is this correct ??? )
+			if( pixelFormat == CCTexturePixelFormat_RGBA8888 || ( CCNextPOT(width)==width && CCNextPOT(height)==height) )
+				glPixelStorei(GL_UNPACK_ALIGNMENT,4);
+			else
+				glPixelStorei(GL_UNPACK_ALIGNMENT,1);
 
-		glGenTextures(1, &_name);
-		glBindTexture(GL_TEXTURE_2D, _name);
-		
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+			glGenTextures(1, &_name);
+			glBindTexture(GL_TEXTURE_2D, _name);
+			
+			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
 
-		// Specify OpenGL texture image
+			// Specify OpenGL texture image
 
-		switch(pixelFormat)
-		{
-			case CCTexturePixelFormat_RGBA8888:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-				break;
-			case CCTexturePixelFormat_RGBA4444:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, data);
-				break;
-			case CCTexturePixelFormat_RGB5A1:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, data);
-				break;
-			case CCTexturePixelFormat_RGB565:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei) width, (GLsizei) height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, data);
-				break;
-			case CCTexturePixelFormat_RGB888:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei) width, (GLsizei) height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-				break;
-			case CCTexturePixelFormat_AI88:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA, (GLsizei) width, (GLsizei) height, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, data);
-				break;
-			case CCTexturePixelFormat_A8:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, (GLsizei) width, (GLsizei) height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data);
-				break;
-			default:
-				[NSException raise:NSInternalInconsistencyException format:@""];
+			switch(pixelFormat)
+			{
+				case CCTexturePixelFormat_RGBA8888:
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+					break;
+				case CCTexturePixelFormat_RGBA4444:
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, data);
+					break;
+				case CCTexturePixelFormat_RGB5A1:
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, data);
+					break;
+				case CCTexturePixelFormat_RGB565:
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei) width, (GLsizei) height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, data);
+					break;
+				case CCTexturePixelFormat_RGB888:
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei) width, (GLsizei) height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+					break;
+				case CCTexturePixelFormat_AI88:
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA, (GLsizei) width, (GLsizei) height, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, data);
+					break;
+				case CCTexturePixelFormat_A8:
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, (GLsizei) width, (GLsizei) height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data);
+					break;
+				default:
+					[NSException raise:NSInternalInconsistencyException format:@""];
 
-		}
+			}
 
-		_sizeInPixels  = sizeInPixels;
-		_width = width;
-		_height = height;
-		_format = pixelFormat;
-		_maxS = sizeInPixels.width / (float)width;
-		_maxT = sizeInPixels.height / (float)height;
+			_sizeInPixels  = sizeInPixels;
+			_width = width;
+			_height = height;
+			_format = pixelFormat;
+			_maxS = sizeInPixels.width / (float)width;
+			_maxT = sizeInPixels.height / (float)height;
 
-		_premultipliedAlpha = NO;
+			_premultipliedAlpha = NO;
 
-		_hasMipmaps = NO;
-        
-        _antialiased = YES;
+			_hasMipmaps = NO;
+					
+					_antialiased = YES;
 
-		_contentScale = contentScale;
-		
-		glPopGroupMarkerEXT();
+			_contentScale = contentScale;
+			
+			CC_CHECK_GL_ERROR_DEBUG();
+			glPopGroupMarkerEXT();
+		});
 	}
 	return self;
 }
@@ -295,9 +299,12 @@ static CCTexture *CCTextureNone = nil;
 	CCLOGINFO(@"cocos2d: deallocing %@", self);
 
 	if( _name ){
-		glPushGroupMarkerEXT(0, "CCTexture: Dealloc");
-		glDeleteTextures(1, &_name);
-		glPopGroupMarkerEXT();
+		CCRenderThreadExecute(^{
+			glPushGroupMarkerEXT(0, "CCTexture: Dealloc");
+			glDeleteTextures(1, &_name);
+			CC_CHECK_GL_ERROR_DEBUG();
+			glPopGroupMarkerEXT();
+		});
 	}
 }
 
@@ -624,6 +631,7 @@ static BOOL _PVRHaveAlphaPremultiplied = YES;
 	glGenerateMipmap(GL_TEXTURE_2D);
 	_hasMipmaps = YES;
 	
+	CC_CHECK_GL_ERROR_DEBUG();
 	glPopGroupMarkerEXT();
 }
 
@@ -641,6 +649,7 @@ static BOOL _PVRHaveAlphaPremultiplied = YES;
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texParams->wrapS );
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texParams->wrapT );
 	
+	CC_CHECK_GL_ERROR_DEBUG();
 	glPopGroupMarkerEXT();
 }
 
@@ -659,6 +668,7 @@ static BOOL _PVRHaveAlphaPremultiplied = YES;
 	
     _antialiased = NO;
 	
+	CC_CHECK_GL_ERROR_DEBUG();
 	glPopGroupMarkerEXT();
 }
 
@@ -677,6 +687,7 @@ static BOOL _PVRHaveAlphaPremultiplied = YES;
     
     _antialiased = YES;
 	
+	CC_CHECK_GL_ERROR_DEBUG();
 	glPopGroupMarkerEXT();
 }
 @end

@@ -47,6 +47,8 @@
 #define CC_CHECK_GL_ERROR_DEBUG() __CC_CHECK_GL_ERROR_DEBUG(__FUNCTION__, __FILE__, __LINE__)
 static inline void __CC_CHECK_GL_ERROR_DEBUG(const char *function, char *file, int line)
 {
+	NSCAssert([EAGLContext currentContext], @"No GL context set.");
+	
 	GLenum error;
 	while((error = glGetError())){
 		switch(error){

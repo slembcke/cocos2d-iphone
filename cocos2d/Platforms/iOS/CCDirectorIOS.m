@@ -107,9 +107,6 @@
     /* calculate "global" dt */
 	[self calculateDeltaTime];
 
-	CCGLView *openGLview = (CCGLView*)self.view;
-	[EAGLContext setCurrentContext:openGLview.context];
-
 	/* tick before glClear: issue #533 */
 	if( ! _isPaused ) [_scheduler update: _dt];
 
@@ -133,7 +130,9 @@
 	[_renderer flush];
 	[CCRenderer bindRenderer:nil];
 	
-	[openGLview swapBuffers];
+	CCRenderThreadExecute(^{
+	[(CCGLView*)self.view swapBuffers];
+	});
 
 	_totalFrames++;
 
@@ -143,7 +142,10 @@
 -(void) setViewport
 {
 	CGSize size = _winSizeInPixels;
-	glViewport(0, 0, size.width, size.height );
+	CCRenderThreadExecute(^{
+		glViewport(0, 0, size.width, size.height );
+		CC_CHECK_GL_ERROR_DEBUG();
+	});
 }
 
 -(void) setProjection:(CCDirectorProjection)projection

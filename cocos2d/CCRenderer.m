@@ -477,41 +477,43 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 -(id)initWithVertexes:(NSUInteger)vertexes elements:(NSUInteger)elements
 {
 	if((self = [super init])){
-		_vertexCapacity = (GLsizei)vertexes;
-		_elementCapacity = (GLsizei)elements;
-//		NSLog(@"CCVertexArray: Initialized with %d vertexes and %d elements.", _vertexCapacity, _elementCapacity);
-		
-		glPushGroupMarkerEXT(0, "CCVertexArray: Init");
-		
-		glGenVertexArrays(1, &_vao);
-		glBindVertexArray(_vao);
-		
-		glEnableVertexAttribArray(CCShaderAttributePosition);
-		glEnableVertexAttribArray(CCShaderAttributeTexCoord1);
-		glEnableVertexAttribArray(CCShaderAttributeTexCoord2);
-		glEnableVertexAttribArray(CCShaderAttributeColor);
-		
-		glGenBuffers(1, &_vbo);
-		glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-		glBufferData(GL_ARRAY_BUFFER, _vertexCapacity*sizeof(*_vertexes), NULL, GL_DYNAMIC_DRAW);
-		
-		glVertexAttribPointer(CCShaderAttributePosition, 4, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, position));
-		glVertexAttribPointer(CCShaderAttributeTexCoord1, 2, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, texCoord1));
-		glVertexAttribPointer(CCShaderAttributeTexCoord2, 2, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, texCoord2));
-		glVertexAttribPointer(CCShaderAttributeColor, 4, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, color));
-		
-		glGenBuffers(1, &_ebo);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, _elementCapacity*sizeof(*_elements), NULL, GL_DYNAMIC_DRAW);
-		
-		glBindVertexArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-		
-		glPopGroupMarkerEXT();
-		CC_CHECK_GL_ERROR_DEBUG();
-		
-		[self map];
+		CCRenderThreadExecute(^{
+			_vertexCapacity = (GLsizei)vertexes;
+			_elementCapacity = (GLsizei)elements;
+	//		NSLog(@"CCVertexArray: Initialized with %d vertexes and %d elements.", _vertexCapacity, _elementCapacity);
+			
+			glPushGroupMarkerEXT(0, "CCVertexArray: Init");
+			
+			glGenVertexArrays(1, &_vao);
+			glBindVertexArray(_vao);
+			
+			glEnableVertexAttribArray(CCShaderAttributePosition);
+			glEnableVertexAttribArray(CCShaderAttributeTexCoord1);
+			glEnableVertexAttribArray(CCShaderAttributeTexCoord2);
+			glEnableVertexAttribArray(CCShaderAttributeColor);
+			
+			glGenBuffers(1, &_vbo);
+			glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+			glBufferData(GL_ARRAY_BUFFER, _vertexCapacity*sizeof(*_vertexes), NULL, GL_DYNAMIC_DRAW);
+			
+			glVertexAttribPointer(CCShaderAttributePosition, 4, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, position));
+			glVertexAttribPointer(CCShaderAttributeTexCoord1, 2, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, texCoord1));
+			glVertexAttribPointer(CCShaderAttributeTexCoord2, 2, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, texCoord2));
+			glVertexAttribPointer(CCShaderAttributeColor, 4, GL_FLOAT, GL_FALSE, sizeof(CCVertex), (void *)offsetof(CCVertex, color));
+			
+			glGenBuffers(1, &_ebo);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, _elementCapacity*sizeof(*_elements), NULL, GL_DYNAMIC_DRAW);
+			
+			glBindVertexArray(0);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+			
+			glPopGroupMarkerEXT();
+			CC_CHECK_GL_ERROR_DEBUG();
+			
+			[self map];
+		});
 	}
 	
 	return self;
@@ -519,6 +521,7 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 
 -(void)dealloc
 {
+	CCRenderThreadExecute(^{
 	glPushGroupMarkerEXT(0, "CCVertexArray: Dealloc");
 	
 //	NSLog(@"Deleting %d %d %d", _vao, _vbo, _ebo);
@@ -527,6 +530,9 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 	glDeleteBuffers(1, &_ebo);
 	
 	glPopGroupMarkerEXT();
+	
+	CC_CHECK_GL_ERROR_DEBUG();
+	});
 }
 
 -(CCRenderBuffer)bufferVertexes:(NSUInteger)vertexCount elementCount:(NSUInteger)elementCount;
@@ -568,6 +574,7 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 -(void)sync
 {
 	_sync = glFenceSyncAPPLE(GL_SYNC_GPU_COMMANDS_COMPLETE_APPLE, 0);
+	CC_CHECK_GL_ERROR_DEBUG();
 }
 
 -(BOOL)map
@@ -597,10 +604,11 @@ CCRenderState *CCRENDERSTATE_DEBUGCOLOR = nil;
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		
 		glPopGroupMarkerEXT();
-		CC_CHECK_GL_ERROR_DEBUG();
 		
 		glDeleteSyncAPPLE(_sync);
 		_sync = NULL;
+		
+		CC_CHECK_GL_ERROR_DEBUG();
 		return YES;
 	} else {
 		return NO;
@@ -764,7 +772,7 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 		if(mask & GL_STENCIL_BUFFER_BIT) glClearStencil(stencil);
 		
 		glClear(mask);
-	} debugLabel:@"CCRenderer: Clear"];
+	} debugLabel:@"CCRenderer: Clear" threadsafe:YES];
 }
 
 -(CCVertexArray *)arrayForVertexes:(GLsizei)vertexes andElements:(GLsizei)elements
@@ -838,7 +846,7 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 	return [array bufferVertexes:vertexCount elementCount:elementCount];
 }
 
--(void)enqueueBlock:(void (^)())block debugLabel:(NSString *)debugLabel
+-(void)enqueueBlock:(void (^)())block debugLabel:(NSString *)debugLabel threadsafe:(BOOL)threadsafe
 {
 	[_queue addObject:[[CCRenderCommandCustom alloc] initWithBlock:block debugLabel:debugLabel]];
 	_lastDrawCommand = nil;
@@ -849,11 +857,12 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 	[self enqueueBlock:^{
     typedef void (*Func)(id, SEL);
     ((Func)objc_msgSend)(target, selector);
-	} debugLabel:NSStringFromSelector(selector)];
+	} debugLabel:NSStringFromSelector(selector) threadsafe:NO];
 }
 
 -(void)flush
 {
+	CCRenderThreadExecute(^{
 //	NSLog(@"Flush");
 	
 	[_queuedArrays addObject:_currentArray];
@@ -892,6 +901,56 @@ static NSString *CURRENT_RENDERER_KEY = @"CCRendererCurrent";
 	_statDrawCommands = 0;
 	
 //	CC_INCREMENT_GL_DRAWS(1);
+	});
 }
 
 @end
+
+
+static BOOL _CCRenderThreadEnable = NO;
+static dispatch_queue_t _CCRenderThreadQueue;
+
+void CCRenderThreadEnable(BOOL enable)
+{
+	if(enable != _CCRenderThreadEnable){
+		if(!_CCRenderThreadEnable) _CCRenderThreadQueue = nil;
+		
+		_CCRenderThreadEnable = enable;
+	}
+}
+
+static dispatch_queue_t
+CCRenderThreadQueue()
+{
+	if(_CCRenderThreadEnable && _CCRenderThreadQueue == nil){
+		_CCRenderThreadQueue = dispatch_queue_create("CCRenderThread", DISPATCH_QUEUE_SERIAL);
+	}
+	
+	return _CCRenderThreadQueue;
+}
+
+//void CCRenderThreadExecuteAsync(void (^block)())
+//{
+//	EAGLContext *context = [(CCGLView *)[CCDirector sharedDirector].view context];
+//	
+//	dispatch_async(CCRenderThreadQueue(), ^{
+//		[EAGLContext setCurrentContext:context];
+//		block();
+//		[EAGLContext setCurrentContext:nil];
+//	});
+//}
+
+void CCRenderThreadExecute(void (^block)())
+{
+	EAGLContext *context = [(CCGLView *)[CCDirector sharedDirector].view context];
+	EAGLContext *current = [EAGLContext currentContext];
+//	dispatch_queue_t queue = CCRenderThreadQueue();
+	
+//	if(context == current){
+//		block();
+//	} else {
+		[EAGLContext setCurrentContext:context];
+		block();
+		[EAGLContext setCurrentContext:current];
+//	}
+}
