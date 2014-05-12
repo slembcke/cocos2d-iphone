@@ -42,8 +42,10 @@
 @optional
 
 -(void) update:(CCTime)delta;
+-(void) updateDidFinish;
 
 -(void) fixedUpdate:(CCTime)delta;
+-(void) fixedUpdateDidFinish;
 
 @end
 

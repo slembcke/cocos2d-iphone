@@ -28,9 +28,19 @@ static CCTime inf = INFINITY;
 	if(_sequence) [_sequence addObject:[NSString stringWithFormat:@"update(%@):%.1f", self.name, delta]];
 }
 
+-(void)updateDidFinish
+{
+	if(_sequence) [_sequence addObject:[NSString stringWithFormat:@"updateDidFinish(%@)", self.name]];
+}
+
 -(void)fixedUpdate:(CCTime)delta
 {
 	if(_sequence) [_sequence addObject:[NSString stringWithFormat:@"fixedUpdate(%@):%.1f", self.name, delta]];
+}
+
+-(void)fixedUpdateDidFinish
+{
+	if(_sequence) [_sequence addObject:[NSString stringWithFormat:@"fixedUpdateDidFinish(%@)", self.name]];
 }
 
 @end
@@ -251,17 +261,24 @@ static CCTime inf = INFINITY;
 	[scheduler update:3.0];
 	XCTAssertEqualObjects(seq, (@[
 		@"fixedUpdate(foo):1.0",
+		@"fixedUpdateDidFinish(foo)",
 		@"fixedUpdate(foo):1.0",
+		@"fixedUpdateDidFinish(foo)",
 		@"fixedUpdate(foo):1.0",
+		@"fixedUpdateDidFinish(foo)",
 		@"update(foo):3.0",
+		@"updateDidFinish(foo)"
 	]), @"");
 	
 	[seq removeAllObjects];
 	[scheduler update:2.0];
 	XCTAssertEqualObjects(seq, (@[
 		@"fixedUpdate(foo):1.0",
+		@"fixedUpdateDidFinish(foo)",
 		@"fixedUpdate(foo):1.0",
+		@"fixedUpdateDidFinish(foo)",
 		@"update(foo):2.0",
+		@"updateDidFinish(foo)"
 	]), @"");
 	
 	// Enable pause again.
@@ -281,8 +298,11 @@ static CCTime inf = INFINITY;
 	[scheduler update:2.0];
 	XCTAssertEqualObjects(seq, (@[
 		@"fixedUpdate(foo):1.0",
+		@"fixedUpdateDidFinish(foo)",
 		@"fixedUpdate(foo):1.0",
+		@"fixedUpdateDidFinish(foo)",
 		@"update(foo):2.0",
+		@"updateDidFinish(foo)"
 	]), @"");
 	
 	// Remove the target.
@@ -292,6 +312,68 @@ static CCTime inf = INFINITY;
 	[seq removeAllObjects];
 	[scheduler update:2.0];
 	XCTAssertEqualObjects(seq, (@[
+	]), @"");
+}
+
+- (void)testDidFinish
+{
+	NSMutableArray *seq = [NSMutableArray array];
+	CCScheduler *scheduler = [[CCScheduler alloc] init];
+	scheduler.maxTimeStep = INFINITY;
+	scheduler.fixedUpdateInterval = 1.0;
+	
+	SequenceTester *target1 = [[SequenceTester alloc] init];
+	target1.sequence = seq;
+	target1.name = @"foo";
+	target1.priority = 1;
+	
+	SequenceTester *target2 = [[SequenceTester alloc] init];
+	target2.sequence = seq;
+	target2.name = @"bar";
+	target2.priority = 2;
+	
+	// Schedule and unpause.
+	[scheduler scheduleTarget:target1];
+	[scheduler scheduleTarget:target2];
+	[scheduler setPaused:NO target:target1];
+	[scheduler setPaused:NO target:target2];
+	
+	[seq removeAllObjects];
+	[scheduler update:3.0];
+	XCTAssertEqualObjects(seq, (@[
+		@"fixedUpdate(foo):1.0",
+		@"fixedUpdate(bar):1.0",
+		@"fixedUpdateDidFinish(foo)",
+		@"fixedUpdateDidFinish(bar)",
+		@"fixedUpdate(foo):1.0",
+		@"fixedUpdate(bar):1.0",
+		@"fixedUpdateDidFinish(foo)",
+		@"fixedUpdateDidFinish(bar)",
+		@"fixedUpdate(foo):1.0",
+		@"fixedUpdate(bar):1.0",
+		@"fixedUpdateDidFinish(foo)",
+		@"fixedUpdateDidFinish(bar)",
+		@"update(foo):3.0",
+		@"update(bar):3.0",
+		@"updateDidFinish(foo)",
+		@"updateDidFinish(bar)"
+	]), @"");
+	
+	[seq removeAllObjects];
+	[scheduler update:2.0];
+	XCTAssertEqualObjects(seq, (@[
+		@"fixedUpdate(foo):1.0",
+		@"fixedUpdate(bar):1.0",
+		@"fixedUpdateDidFinish(foo)",
+		@"fixedUpdateDidFinish(bar)",
+		@"fixedUpdate(foo):1.0",
+		@"fixedUpdate(bar):1.0",
+		@"fixedUpdateDidFinish(foo)",
+		@"fixedUpdateDidFinish(bar)",
+		@"update(foo):2.0",
+		@"update(bar):2.0",
+		@"updateDidFinish(foo)",
+		@"updateDidFinish(bar)"
 	]), @"");
 }
 
