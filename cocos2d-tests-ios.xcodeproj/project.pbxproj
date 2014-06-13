@@ -80,6 +80,7 @@
 		D3B2A7E5187DD60B00406C5A /* CCBMFontTest.m in Sources */ = {isa = PBXBuildFile; fileRef = D3B2A7E4187DD60B00406C5A /* CCBMFontTest.m */; };
 		D3C9C867188078B900C58900 /* CCSchedulerTest.m in Sources */ = {isa = PBXBuildFile; fileRef = D3C9C866188078B900C58900 /* CCSchedulerTest.m */; };
 		D3D6CF5F18BD5F0500A51531 /* CCRendererTest.m in Sources */ = {isa = PBXBuildFile; fileRef = D3D6CF5E18BD5F0500A51531 /* CCRendererTest.m */; };
+		D3FE6F9C194B93B9009E73AB /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D3FE6F9B194B93B9009E73AB /* ImageIO.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -204,6 +205,7 @@
 		D3B2A7E4187DD60B00406C5A /* CCBMFontTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = CCBMFontTest.m; path = "cocos2d-ui-tests/tests/CCBMFontTest.m"; sourceTree = SOURCE_ROOT; };
 		D3C9C866188078B900C58900 /* CCSchedulerTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = CCSchedulerTest.m; path = "cocos2d-ui-tests/tests/CCSchedulerTest.m"; sourceTree = SOURCE_ROOT; };
 		D3D6CF5E18BD5F0500A51531 /* CCRendererTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = CCRendererTest.m; path = "cocos2d-ui-tests/tests/CCRendererTest.m"; sourceTree = SOURCE_ROOT; };
+		D3FE6F9B194B93B9009E73AB /* ImageIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ImageIO.framework; path = System/Library/Frameworks/ImageIO.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -222,6 +224,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D3FE6F9C194B93B9009E73AB /* ImageIO.framework in Frameworks */,
 				D34CD3C218ABEE9C00D8E537 /* GLKit.framework in Frameworks */,
 				B7E2623617E7D589007067F0 /* libcocos2d.a in Frameworks */,
 				B7E2604C17E7D278007067F0 /* QuartzCore.framework in Frameworks */,
@@ -406,6 +409,7 @@
 		B7E2604A17E7D278007067F0 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D3FE6F9B194B93B9009E73AB /* ImageIO.framework */,
 				D34CD3C118ABEE9C00D8E537 /* GLKit.framework */,
 				B7E2604B17E7D278007067F0 /* QuartzCore.framework */,
 				B7E2604D17E7D278007067F0 /* OpenGLES.framework */,

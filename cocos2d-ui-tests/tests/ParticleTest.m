@@ -6,7 +6,6 @@
 //
 
 #import "TestBase.h"
-#import "CCTextureCache.h"
 
 @interface ParticleTest : TestBase
 @property (readwrite, retain) CCParticleSystemBase *emitter;
@@ -50,7 +49,7 @@
 -(void) setupFlower
 {
 	self.emitter = [CCParticleSystem particleWithFile:@"Particles/Flower.plist"];
-	self.emitter.texture = [[CCTextureCache sharedTextureCache] addImage: @"stars-grayscale.png"];
+	self.emitter.texture = [CCTexture textureWithFile:@"stars-grayscale.png"];
 	[self.contentNode addChild:self.emitter z:10];
   [self createScene: @"Flower made of pretty stars. Loaded from plist."];
 }
@@ -58,7 +57,7 @@
 -(void) setupBigFlower
 {
   self.emitter = [[CCParticleSystem alloc] initWithTotalParticles:50];
-	self.emitter.texture = [[CCTextureCache sharedTextureCache] addImage: @"stars-grayscale.png"];
+	self.emitter.texture = [CCTexture textureWithFile:@"stars-grayscale.png"];
   
 	// duration
 	self.emitter.duration = CCParticleSystemDurationInfinity;
@@ -135,7 +134,7 @@
 
   for (int i = 0; i<5; i++) {
     CCParticleSystem *particleSystem = [CCParticleSystem particleWithFile:@"Particles/Flower.plist"];
-    particleSystem.texture = [[CCTextureCache sharedTextureCache] addImage: @"stars-grayscale.png"];
+    particleSystem.texture = [CCTexture textureWithFile:@"stars-grayscale.png"];
     
     particleSystem.position = ccp(s.width/2 + i*150 - 300, s.height/2);
     [self.contentNode addChild:particleSystem z:10];
@@ -150,7 +149,7 @@
 {
   
 	self.emitter = [CCParticleSystem particleWithFile:@"Particles/Galaxy.plist"];
-  self.emitter.texture = [[CCTextureCache sharedTextureCache] addImage: PARTICLE_FIRE_NAME];
+  self.emitter.texture = [CCTexture textureWithFile:PARTICLE_FIRE_NAME];
 	[self.contentNode addChild:self.emitter z:10];
   [self createScene: @"Galaxy - You should see radial & tangential accel"];
 }
@@ -243,7 +242,7 @@
   self.emitter.startColor = [CCColor colorWithRed:1 green:1 blue:1 alpha:1];
   self.emitter.endColor = [CCColor colorWithRed:0 green:0 blue:0 alpha:1];
   
-  self.emitter.texture = [[CCTextureCache sharedTextureCache] addImage: @"particles.png"];
+  self.emitter.texture = [CCTexture textureWithFile:@"particles.png"];
 
 	[self.contentNode addChild:self.emitter z:10];
   [self createScene: @"Prevent bursts of particles that exceed the emitCounter. You should see a steady line of particles, without jittering bursts."];

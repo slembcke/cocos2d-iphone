@@ -39,9 +39,10 @@
 
 @interface CCCache : NSObject
 
+@property(nonatomic, strong, readonly) NSDictionary *entries;
+
 //------------------------------------------------------------------------------
 
-+ (instancetype)cache;
 - (instancetype)init;
 
 - (void)preload:(id<NSCopying>)key;

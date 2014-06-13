@@ -34,7 +34,6 @@
 #import "CCTiledMapLayer.h"
 #import "CCTiledMapObjectGroup.h"
 #import "CCSprite.h"
-#import "CCTextureCache.h"
 #import "Support/CGPointExtension.h"
 
 #import "CCTiledMapLayer_Private.h"

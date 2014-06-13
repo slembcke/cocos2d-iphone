@@ -28,7 +28,6 @@
  */
 
 #import "CCParticleBatchNode.h"
-#import "CCTextureCache.h"
 #import "ccConfig.h"
 #import "ccMacros.h"
 #import "Support/CGPointExtension.h"
@@ -107,7 +106,7 @@
  */
 -(id)initWithFile:(NSString *)fileImage capacity:(NSUInteger)capacity
 {
-	CCTexture *tex = [[CCTextureCache sharedTextureCache] addImage:fileImage];
+	CCTexture *tex = [CCTexture textureWithFile:fileImage];
 	return [self initWithTexture:tex capacity:capacity];
 }
 

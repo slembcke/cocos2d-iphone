@@ -36,19 +36,13 @@
 
 //------------------------------------------------------------------------------
 
-@implementation CCCache 
-{
-    NSMutableDictionary *_cacheList;
+@implementation CCCache {
+	NSMutableDictionary *_entries;
 }
 
 //------------------------------------------------------------------------------
 #pragma mark - Cache creation
 //------------------------------------------------------------------------------
-
-+ (instancetype)cache
-{
-    return [[self alloc] init];
-}
 
 - (instancetype)init
 {
@@ -56,7 +50,7 @@
     NSAssert(self, @"Unable to create class CCCache");
 
     // initialize
-    _cacheList = [NSMutableDictionary dictionary];
+    _entries = [NSMutableDictionary dictionary];
     
     // done
     return self;
@@ -75,13 +69,13 @@
 
 -(id)rawObjectForKey:(id<NSCopying>)key
 {
-    CCCacheEntry *entry = [_cacheList objectForKey:key];
+    CCCacheEntry *entry = _entries[key];
 		return entry.publicObject;
 }
 
 - (CCCacheEntry *)entryForKey:(id<NSCopying>)key
 {
-    CCCacheEntry *entry = [_cacheList objectForKey:key];
+    CCCacheEntry *entry = _entries[key];
     
     if (entry == nil)
 		{
@@ -89,7 +83,7 @@
         entry = [[CCCacheEntry alloc] init];
 				entry.sharedData = [self createSharedDataForKey:key];
 				
-        [_cacheList setObject:entry forKey:key];
+				_entries[key] = entry;
     }
 		
 		return entry;
@@ -112,7 +106,7 @@
 - (void)makeAlias:(id<NSCopying>)alias forKey:(id<NSCopying>)key
 {
     CCCacheEntry *entry = [self entryForKey:key];
-		[_cacheList setObject:entry forKey:alias];
+		_entries[alias] = entry;
 }
 
 //------------------------------------------------------------------------------
@@ -120,9 +114,9 @@
 - (void)flush
 {
     // iterate keys
-    for (id key in [_cacheList allKeys])
+    for (id key in [_entries allKeys])
     {
-        CCCacheEntry *entry = [_cacheList objectForKey:key];
+        CCCacheEntry *entry = _entries[key];
         
         // if entry has no live public objects, delete the entry
         if (entry.publicObject == nil)
@@ -134,7 +128,7 @@
 		    				entry.sharedData = nil;
 						}
 						
-            [_cacheList removeObjectForKey:key];
+            [_entries removeObjectForKey:key];
         }
     }
 }

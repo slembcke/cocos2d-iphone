@@ -25,7 +25,6 @@
  */
 
 #import "CCMotionStreak.h"
-#import "CCTextureCache.h"
 #import "CCShader.h"
 #import "ccMacros.h"
 #import "CCNode_Private.h"
@@ -196,7 +195,7 @@ static void CCVertexLineToPolygon(CGPoint *points, float stroke, ccVertex2F *ver
 {
     NSAssert(path != nil, @"Invalid filename");
 
-    CCTexture *texture = [[CCTextureCache sharedTextureCache] addImage:path];
+    CCTexture *texture = [CCTexture textureWithFile:path];
     return [self initWithFade:fade minSeg:minSeg width:stroke color:color texture:texture];
 }
 

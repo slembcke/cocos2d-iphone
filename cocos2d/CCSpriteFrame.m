@@ -26,12 +26,72 @@
  */
 
 
-#import "CCTextureCache.h"
 #import "CCSpriteFrame.h"
 #import "CCTexture.h"
 #import "ccMacros.h"
 #import "CCSpriteFrameCache.h"
 #import "CCTexture_Private.h"
+
+
+// Proxy object returned in place of a CCTexture or CCSpriteFrame by the texture cache.
+// Weakly retained by the original object, so it can be know if the object is referenced when a memory warning arrives.
+// This is used as a temporary fix for the texture cache until asset loading can be refactored better.
+@interface CCProxy : NSObject
+- (id)initWithTarget:(id)target;
+@end
+
+
+// This class implements what will hopefully be a temporary replacement
+// for the retainCount trick used to figure out which cached objects are safe to purge.
+@implementation CCProxy
+{
+    id _target;
+}
+
+- (id)initWithTarget:(id)target
+{
+    if ((self = [super init]))
+    {
+        _target = target;
+    }
+    
+    return(self);
+}
+
+// Forward class checks for assertions.
+-(BOOL)isKindOfClass:(Class)aClass {return [_target isKindOfClass:aClass];}
+
+// Make concrete implementations for CCTexture methods commonly called at runtime.
+-(GLuint)name {return [(CCTexture *)_target name];}
+-(CGFloat)contentScale {return [_target contentScale];}
+-(CGSize)contentSize {return [_target contentSize];}
+-(NSUInteger)pixelWidth {return [_target pixelWidth];}
+-(NSUInteger)pixelHeight {return [_target pixelHeight];}
+-(BOOL)hasPremultipliedAlpha {return [_target hasPremultipliedAlpha];}
+-(CCSpriteFrame *)createSpriteFrame {return [_target createSpriteFrame];}
+
+// Make concrete implementations for CCSpriteFrame methods commonly called at runtime.
+-(CGRect)rect {return [_target rect];}
+-(CGPoint)offset {return [_target offset];}
+-(BOOL)rotated {return [_target rotated];}
+-(CGSize)originalSize {return [_target originalSize];}
+-(CCTexture *)texture {return [_target texture];}
+
+// Let the rest fall back to a slow forwarded path.
+- (id)forwardingTargetForSelector:(SEL)aSelector
+{
+//    CCLOGINFO(@"Forwarding selector [%@ %@]", NSStringFromClass([_target class]), NSStringFromSelector(aSelector));
+//		CCLOGINFO(@"If there are many of these calls, we should add concrete forwarding methods. (TODO remove logging before release)");
+    return(_target);
+}
+
+- (void)dealloc
+{
+		CCLOGINFO(@"Proxy for %p deallocated.", _target);
+}
+
+@end
+
 
 @implementation CCSpriteFrame
 {
@@ -55,7 +115,7 @@
     CCSpriteFrame* frame = [[CCSpriteFrameCache sharedSpriteFrameCache] spriteFrameByName:imageName];
     if (!frame)
     {
-        CCTexture* texture = [[CCTextureCache sharedTextureCache] addImage:imageName];
+        CCTexture* texture = [CCTexture textureWithFile:imageName];
         frame = [texture createSpriteFrame];
     }
     
@@ -153,7 +213,7 @@
 {
 	CCTexture *texture = _lazyTexture;
 	if(!texture && _textureFilename){
-		_lazyTexture = texture = [[CCTextureCache sharedTextureCache] addImage:_textureFilename];
+		_lazyTexture = texture = [CCTexture textureWithFile:_textureFilename];
 	}
 	
 	return texture;

@@ -51,7 +51,6 @@
 #import "CCParticleSystemBase.h"
 #import "CCParticleBatchNode.h"
 #import "CCTexture.h"
-#import "CCTextureCache.h"
 #import "ccMacros.h"
 #import "Support/CCProfiling.h"
 #import "CCNode_Private.h"
@@ -244,7 +243,7 @@
 			if( ! [textureDir isEqualToString:dirname] )
 				textureName = [dirname stringByAppendingPathComponent:textureName];
 
-			CCTexture *tex = [[CCTextureCache sharedTextureCache] addImage:textureName];
+			CCTexture *tex = [CCTexture textureWithFile:textureName];
 
 			if( tex )
 				[self setTexture:tex];
@@ -273,7 +272,7 @@
 
 				free(deflated); deflated = NULL;
 
-				[self setTexture:  [ [CCTextureCache sharedTextureCache] addCGImage:[image CGImage] forKey:textureName]];
+				self.texture = [CCTexture textureWithCGImage:image.CGImage name:textureName];
 			}
 
 			NSAssert( [self texture] != NULL, @"CCParticleSystem: error loading the texture");

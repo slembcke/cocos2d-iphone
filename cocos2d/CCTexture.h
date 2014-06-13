@@ -69,6 +69,75 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 #import "Platforms/CCNS.h" // Next-Step stuff
 
 @class CCSpriteFrame;
+@class CCShader;
+
+
+/// Textures can be set to clamp to their edges or repeat.
+typedef NS_ENUM(NSUInteger, CCTextureInfoWrapMode){
+	/// Clamp texture coordinates to the [0, 1] range.
+	CCTextureInfoWrapModeClampToEdge,
+	
+	/// Make the texture repeat for texture coordinates outside of the [0, 1] range.
+	CCTextureInfoWrapModeRepeat,
+	
+	/// Make the texture repeat back and forth outside of the [0, 1] range. 
+	CCTextureInfoWrapModeMirroredRepeat,
+};
+
+
+/// Texture filtering defines the scaling algorithm the GPU uses when scaling the texture up or down.
+typedef NS_ENUM(NSUInteger, CCTextureInfoFilterMode){
+	/// Nearest neighbor interpolation. Sometimes referred to as blocky or aliased mode.
+	CCTextureInfoFilterModeNearest,
+	
+	/// Linear interpolation. Sometimes referred to as bilinear or anti-aliased mode.
+	CCTextureInfoFilterModeLinear,
+	
+	/// Use the nearest mipmap and nearest pixel.
+	/// Only valid as a minification mode.
+	CCTextureInfoFilterModeNearestMipmapNearest,
+	
+	/// Linearly interpolate between pixels in the nearest mipmap level.
+	/// Only valid as a minification mode.
+	CCTextureInfoFilterModeLinearMipmapNearest,
+	
+	/// Use nearest neighbor interpolation but linearly interpolate between mipmap levels.
+	/// Only valid as a minification mode.
+	CCTextureInfoFilterModeNearestMipmapLinear,
+	
+	/// The highest quality (and slowest) filtering mode. Sometimes referred to as tri-linear.
+	CCTextureInfoFilterModeLinearMipmapLinear,
+};
+
+
+@interface CCTextureInfo : NSObject <NSCopying>
+
+-(instancetype)initWithTextureNamed:(NSString *)name;
+-(instancetype)initWithImage:(CGImageRef)image;
+
+/// Filename to load the texture from.
+@property(nonatomic, copy) NSString *textureName;
+
+/// CGImage to load the texture from.
+@property(nonatomic, assign) CGImageRef image;
+
+/// Wrapping mode of the texture on the x-axis.
+@property(nonatomic, assign) CCTextureInfoWrapMode wrapModeX;
+
+/// Wrapping mode of the texture on the y-axis.
+@property(nonatomic, assign) CCTextureInfoWrapMode wrapModeY;
+
+/// Texture filtering mode of the texture when scaling it down.
+@property(nonatomic, assign) CCTextureInfoFilterMode filterModeMin;
+
+/// Texture filtering mode of the texture when scaling it up.
+@property(nonatomic, assign) CCTextureInfoFilterMode filterModeMag;
+
+/// If the texture should have mipmaps generated automatically when it loads.
+@property(nonatomic, assign) BOOL generateMipmaps;
+
+@end
+
 
 /**
  *  Possible texture pixel formats
@@ -109,8 +178,6 @@ typedef NS_ENUM(NSUInteger, CCTexturePixelFormat) {
 	CCTexturePixelFormat_Default = CCTexturePixelFormat_RGBA8888,
 };
 
-@class CCShader;
-
 /** CCTexture2D class.
  *  This class allows to easily create OpenGL 2D textures from images, text or raw data.
  *  The created CCTexture2D object will always have power-of-two dimensions.
@@ -138,6 +205,39 @@ typedef NS_ENUM(NSUInteger, CCTexturePixelFormat) {
 
 
 /// -----------------------------------------------------------------------
+/// @name Creating a Cached CCTexture Object
+/// -----------------------------------------------------------------------
+
+/**
+ *  Creates and returns a new texture, based on  the specified file path value.
+ *  If the texture has already been loaded, and resides in cache, the previously created texture is returned.
+ *
+ *  @param file File path to load (should not include any suffixes).
+ *
+ *  @return The CCTexture object.
+ */
++(instancetype)textureWithFile:(NSString*)file;
+
+/**
+ *  Creates and returns a new texture from the CGImageRef.
+ *  If a texture with the same name has already been loaded, and resides in cache, the previously created texture is returned.
+ *
+ *  @param image The image to create the texture from.
+ *
+ *  @param name The name of the texture for the cache.
+ *
+ *  @return The CCTexture object.
+ */
++(instancetype)textureWithCGImage:(CGImageRef)image name:(NSString *)name;
+
+/// Remove all currently unused texture from the cache.
++(void)flushTextureCache;
+
+/// Dump information of the current set of cached textures to the log.
++(void)dumpTextureCacheInfo;
+
+
+/// -----------------------------------------------------------------------
 /// @name Initializing a CCTexture Object
 /// -----------------------------------------------------------------------
 
@@ -155,20 +255,6 @@ typedef NS_ENUM(NSUInteger, CCTexturePixelFormat) {
  */
 - (id)initWithData:(const void*)data pixelFormat:(CCTexturePixelFormat)pixelFormat pixelsWide:(NSUInteger)width pixelsHigh:(NSUInteger)height contentSizeInPixels:(CGSize)sizeInPixels contentScale:(CGFloat)contentScale;
 
-
-/// -----------------------------------------------------------------------
-/// @name Creating a CCTexture Object
-/// -----------------------------------------------------------------------
-
-/**
- *  Creates and returns a new texture, based on  the specified file path value.
- *  If the texture has already been loaded, and resides in cache, the previously created texture is returned.
- *
- *  @param file File path to load (should not include any suffixes).
- *
- *  @return The CCTexture object.
- */
-+(instancetype)textureWithFile:(NSString*)file;
 
 /// A placeholder value for a blank sizeless texture.
 +(instancetype)none;

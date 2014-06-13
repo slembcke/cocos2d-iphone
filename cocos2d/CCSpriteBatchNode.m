@@ -29,7 +29,6 @@
 
 #import "CCSpriteBatchNode.h"
 #import "CCTexture.h"
-#import "CCTextureCache.h"
 #import "CCNode_Private.h"
 
 @implementation CCSpriteBatchNode {
@@ -62,7 +61,7 @@
 
 -(id)initWithFile:(NSString *)fileImage capacity:(NSUInteger)capacity
 {
-	CCTexture *tex = [[CCTextureCache sharedTextureCache] addImage:fileImage];
+	CCTexture *tex = [CCTexture textureWithFile:fileImage];
 	return [self initWithTexture:tex capacity:capacity];
 }
 

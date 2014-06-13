@@ -8,7 +8,6 @@
 #import "cocos2d.h"
 #import "TestBase.h"
 
-#import "CCTextureCache.h"
 #import "CCTexture_Private.h"
 
 @interface TextureTest : TestBase @end
@@ -173,23 +172,23 @@
 	[sprite setPosition:ccp(s.width/5*1, s.height/2)];
 	[[sprite texture] setAntialiased:NO];
 	[sprite setScale:2];
-	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
+//	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
 	
 	sprite = [self loadAndDisplayImageNamed: @"powered.png" withTitle: @""];
 	[sprite setPosition:ccp(s.width/5*2, s.height/2)];
 	[[sprite texture] setAntialiased:YES];
 	[sprite setScale:2];
-	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
+//	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
 	
 	sprite = [self loadAndDisplayImageNamed: @"powered.png" withTitle: @""];
 	[sprite setPosition:ccp(s.width/5*3, s.height/2)];
 	[[sprite texture] setAntialiased:NO];	[sprite setScale:2];
-	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
+//	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
 	
 	sprite = [self loadAndDisplayImageNamed: @"powered.png" withTitle: @""];
 	[sprite setPosition:ccp(s.width/5*4, s.height/2)];
 	[[sprite texture] setAntialiased:YES];	[sprite setScale:2];
-	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
+//	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
 	
 	self.subTitle = @"Images should appear: aliased, antialiased, aliased, antialiased\n The purpose of the 4 repetitions of the texture is to make sure the antialias state doesn't leak in the shared texture cache.";
 
@@ -202,7 +201,7 @@
 	CGSize s = [[CCDirector sharedDirector] viewSize];
 
 	// requires a power of two image
-	CCTexture* texture = [[CCTextureCache sharedTextureCache] addImage:@"test_image.png"];
+	CCTexture* texture = [CCTexture textureWithFile:@"test_image.png"];
 	
 	CCSprite *img = [CCSprite spriteWithTexture:texture rect:CGRectMake(0, 0, 800, 600)];
 	img.position = ccp( s.width/2.0f, s.height/2.0f);

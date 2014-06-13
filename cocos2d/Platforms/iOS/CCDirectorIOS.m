@@ -36,7 +36,6 @@
 #import "CCDirectorIOS.h"
 #import "../../CCScheduler.h"
 #import "../../CCActionManager.h"
-#import "../../CCTextureCache.h"
 #import "../../ccMacros.h"
 #import "../../CCScene.h"
 #import "../../CCShader.h"

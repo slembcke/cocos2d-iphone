@@ -36,7 +36,6 @@
 
 #import "Platforms/CCNS.h"
 #import "ccMacros.h"
-#import "CCTextureCache.h"
 #import "CCSpriteFrameCache.h"
 #import "CCSpriteFrame.h"
 #import "CCSprite.h"

@@ -7,7 +7,6 @@
 //
 
 #import "TestBase.h"
-#import "CCTextureCache.h"
 
 @interface CCTextureCacheTest : TestBase
 @property (nonatomic,strong) CCTexture* texture;
@@ -73,11 +72,11 @@
 - (void)testCacheAdd:(id)sender
 {
     NSLog(@"Loading 5 textures:");
-    [[CCTextureCache sharedTextureCache] addImage:@"Images/grossini_dance_01.png"];
-    [[CCTextureCache sharedTextureCache] addImage:@"Images/grossini_dance_02.png"];
-    [[CCTextureCache sharedTextureCache] addImage:@"Images/grossini_dance_03.png"];
-    [[CCTextureCache sharedTextureCache] addImage:@"Images/grossini_dance_04.png"];
-    [[CCTextureCache sharedTextureCache] addImage:@"Images/grossini_dance_05.png"];
+    [CCTexture textureWithFile:@"Images/grossini_dance_01.png"];
+    [CCTexture textureWithFile:@"Images/grossini_dance_02.png"];
+    [CCTexture textureWithFile:@"Images/grossini_dance_03.png"];
+    [CCTexture textureWithFile:@"Images/grossini_dance_04.png"];
+    [CCTexture textureWithFile:@"Images/grossini_dance_05.png"];
 }
 
 // create a couple of sprites, with cache images
@@ -124,14 +123,14 @@
 - (void)testCacheInformation:(id)sender
 {
     NSLog(@"Dumping texture cache info:");
-    [[CCTextureCache sharedTextureCache] dumpCachedTextureInfo];
+    [CCTexture dumpTextureCacheInfo];
 }
 
 // remove unused textures
 - (void)testCacheFlush:(id)sender
 {
     NSLog(@"Flushing the texture cache:");
-    [[CCTextureCache sharedTextureCache] removeUnusedTextures];
+    [CCTexture flushTextureCache];
 }
 
 // remove unused textures

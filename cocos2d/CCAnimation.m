@@ -29,7 +29,6 @@
 #import "CCAnimation.h"
 #import "CCSpriteFrame.h"
 #import "CCTexture.h"
-#import "CCTextureCache.h"
 
 #pragma mark - CCAnimationFrame
 @implementation CCAnimationFrame
@@ -177,7 +176,7 @@
 
 -(void) addSpriteFrameWithFilename:(NSString*)filename
 {
-	CCTexture *texture = [[CCTextureCache sharedTextureCache] addImage:filename];
+	CCTexture *texture = [CCTexture textureWithFile:filename];
 	
 	CGSize sizeInPixels = texture.contentSizeInPixels;
 	CGRect rectInPixels = {CGPointZero, sizeInPixels};

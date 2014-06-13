@@ -34,7 +34,6 @@
 #import "CCDirector.h"
 #import "CCScheduler.h"
 #import "CCActionManager.h"
-#import "CCTextureCache.h"
 #import "CCAnimationCache.h"
 #import "CCLabelBMFont.h"
 #import "ccMacros.h"
@@ -46,6 +45,7 @@
 #import "CCConfiguration.h"
 #import "CCTransition.h"
 #import "CCRenderer_private.h"
+#import "CCTexture_private.h"
 
 // support imports
 #import "Platforms/CCGL.h"
@@ -280,8 +280,7 @@ static CCDirector *_sharedDirector = nil;
 {
 	[CCRENDERSTATE_CACHE flush];
 	[CCLabelBMFont purgeCachedData];
-	if ([_sharedDirector view])
-		[[CCTextureCache sharedTextureCache] removeUnusedTextures];
+	if ([_sharedDirector view]) [CCTexture flushTextureCache];
 	[[CCFileUtils sharedFileUtils] purgeCachedEntries];
 }
 
@@ -648,7 +647,7 @@ static CCDirector *_sharedDirector = nil;
 	// Purge all managers / caches
 	[CCAnimationCache purgeSharedAnimationCache];
 	[CCSpriteFrameCache purgeSharedSpriteFrameCache];
-	[CCTextureCache purgeSharedTextureCache];
+	[CCTexture resetTextureCache];
 	[[CCFileUtils sharedFileUtils] purgeCachedEntries];
 
 	// OpenGL view

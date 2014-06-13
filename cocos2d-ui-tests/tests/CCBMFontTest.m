@@ -7,7 +7,6 @@
 //
 
 #import "TestBase.h"
-#import "CCTextureCache.h"
 
 static NSString *TEST_STRINGS[] = {
 	@"ABCDEFGHIJKLM\nNOPQRSTUVWXYZ",

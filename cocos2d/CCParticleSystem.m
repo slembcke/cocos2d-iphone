@@ -34,7 +34,6 @@
 #import "ccConfig.h"
 #import "CCParticleSystem.h"
 #import "CCParticleBatchNode.h"
-#import "CCTextureCache.h"
 #import "ccMacros.h"
 #import "CCSpriteFrame.h"
 #import "CCDirector.h"

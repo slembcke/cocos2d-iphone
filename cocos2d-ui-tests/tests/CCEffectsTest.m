@@ -1,5 +1,4 @@
 #import "TestBase.h"
-#import "CCTextureCache.h"
 #import "CCNodeColor.h"
 #import "CCEffectNode.h"
 #import "CCEffectGaussianBlur.h"

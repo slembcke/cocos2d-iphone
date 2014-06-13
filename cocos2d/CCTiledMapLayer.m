@@ -34,7 +34,6 @@
 #import "CCTMXXMLParser.h"
 #import "CCSprite.h"
 #import "CCSpriteBatchNode.h"
-#import "CCTextureCache.h"
 #import "CCShader.h"
 #import "Support/CGPointExtension.h"
 #import "CCNode_Private.h"
@@ -78,7 +77,7 @@
 
 	CCTexture *tex = nil;
 	if( tilesetInfo )
-		tex = [[CCTextureCache sharedTextureCache] addImage:tilesetInfo.sourceImage];
+		tex = [CCTexture textureWithFile:tilesetInfo.sourceImage];
 
 	if((self = [super init])) {
 		self.texture = tex;

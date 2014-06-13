@@ -27,7 +27,6 @@
 #import "CCProgressNode.h"
 
 #import "ccMacros.h"
-#import "CCTextureCache.h"
 #import "CCShader.h"
 #import "CCDirector.h"
 #import "Support/CGPointExtension.h"

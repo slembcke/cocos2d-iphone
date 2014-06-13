@@ -27,18 +27,10 @@
 
 // -------------------------------------------------------------
 
-// Proxy object returned in place of a CCTexture or CCSpriteFrame by the texture cache.
-// Weakly retained by the original object, so it can be know if the object is referenced when a memory warning arrives.
-// This is used as a temporary fix for the texture cache until asset loading can be refactored better.
-@interface CCProxy : NSObject
-
-- (id)initWithTarget:(id)target;
-
-@end
-
-// -------------------------------------------------------------
-
 @interface CCTexture ()
+
+/// Remove all textures from the cache.
++(void)resetTextureCache;
 
 /* These functions are needed to create mutable textures */
 - (void) releaseData:(void*)data;
@@ -51,12 +43,6 @@
 @property(nonatomic,readwrite) GLfloat maxS;
 /* texture max T */
 @property(nonatomic,readwrite) GLfloat maxT;
-
-// Check if the texture's weakly retained proxy still exists.
-@property(atomic, readonly) BOOL hasProxy;
-
-// Retrieve the proxy for this texture.
-@property(atomic, readonly, weak) CCProxy *proxy;
 
 @end
 

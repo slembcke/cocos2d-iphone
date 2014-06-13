@@ -41,7 +41,6 @@
 #import "CCSprite.h"
 #import "CCConfiguration.h"
 #import "CCTexture.h"
-#import "CCTextureCache.h"
 #import "Support/CCFileUtils.h"
 #import "Support/CGPointExtension.h"
 #import "Support/uthash.h"
@@ -523,7 +522,7 @@ void FNTConfigRemoveCache( void )
 			return nil;
 		}
         
-		texture = [[CCTextureCache sharedTextureCache] addImage:newConf.atlasName];
+		texture = [CCTexture textureWithFile:newConf.atlasName];
 	} else {
 		texture = [[CCTexture alloc] init];
 	}

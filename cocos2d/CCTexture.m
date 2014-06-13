@@ -84,62 +84,162 @@
 #import "Support/CCFileUtils.h"
 
 #import "CCTexture_Private.h"
-#import "CCTextureCache.h"
 #import "CCSpriteFrame.h"
+
+#import "ImageIO/ImageIO.h"
+#import "CCCache.h"
 
 
 //CLASS IMPLEMENTATIONS:
 
-// This class implements what will hopefully be a temporary replacement
-// for the retainCount trick used to figure out which cached objects are safe to purge.
-@implementation CCProxy
+
+@implementation CCTextureInfo
+
+-(id)init
 {
-    id _target;
+	if((self = [super init])){
+		_wrapModeX = CCTextureInfoWrapModeClampToEdge;
+		_wrapModeY = CCTextureInfoWrapModeClampToEdge;
+		_filterModeMin = CCTextureInfoFilterModeLinear;
+		_filterModeMag = CCTextureInfoFilterModeLinear;
+	}
+	
+	return self;
 }
 
-- (id)initWithTarget:(id)target
+-(instancetype)initWithTextureNamed:(NSString *)name;
 {
-    if ((self = [super init]))
-    {
-        _target = target;
-    }
-    
-    return(self);
+	NSAssert(name, @"Texture name cannot be nil.");
+	
+	if((self = [self init])){
+		_textureName = [name copy];
+	}
+	
+	return self;
 }
 
-// Forward class checks for assertions.
--(BOOL)isKindOfClass:(Class)aClass {return [_target isKindOfClass:aClass];}
-
-// Make concrete implementations for CCTexture methods commonly called at runtime.
--(GLuint)name {return [(CCTexture *)_target name];}
--(CGFloat)contentScale {return [_target contentScale];}
--(CGSize)contentSize {return [_target contentSize];}
--(NSUInteger)pixelWidth {return [_target pixelWidth];}
--(NSUInteger)pixelHeight {return [_target pixelHeight];}
--(BOOL)hasPremultipliedAlpha {return [_target hasPremultipliedAlpha];}
--(CCSpriteFrame *)createSpriteFrame {return [_target createSpriteFrame];}
-
-// Make concrete implementations for CCSpriteFrame methods commonly called at runtime.
--(CGRect)rect {return [_target rect];}
--(CGPoint)offset {return [_target offset];}
--(BOOL)rotated {return [_target rotated];}
--(CGSize)originalSize {return [_target originalSize];}
--(CCTexture *)texture {return [_target texture];}
-
-// Let the rest fall back to a slow forwarded path.
-- (id)forwardingTargetForSelector:(SEL)aSelector
+-(instancetype)initWithImage:(CGImageRef)image;
 {
-//    CCLOGINFO(@"Forwarding selector [%@ %@]", NSStringFromClass([_target class]), NSStringFromSelector(aSelector));
-//		CCLOGINFO(@"If there are many of these calls, we should add concrete forwarding methods. (TODO remove logging before release)");
-    return(_target);
+	NSAssert(image, @"Texture image cannot be NULL.");
+	
+	if((self = [self init])){
+		_image = CGImageRetain(image);
+	}
+	
+	return self;
 }
 
-- (void)dealloc
+-(id)copyWithZone:(NSZone *)zone
 {
-		CCLOGINFO(@"Proxy for %p deallocated.", _target);
+	CCTextureInfo *copy = [[self.class alloc] init];
+	copy.textureName = self.textureName;
+	copy.image = CGImageRetain(self.image);
+	copy.wrapModeX = self.wrapModeX;
+	copy.wrapModeY = self.wrapModeY;
+	copy.filterModeMin = self.filterModeMin;
+	copy.filterModeMag = self.filterModeMag;
+	copy.generateMipmaps = self.generateMipmaps;
+	
+	return copy;
+}
+
+-(void)dealloc
+{
+	if(_image) CGImageRelease(_image);
+}
+
+-(void)setFilterModeMag:(CCTextureInfoFilterMode)filterModeMag
+{
+	NSAssert(filterModeMag == CCTextureInfoFilterModeNearest || filterModeMag == CCTextureInfoFilterModeLinear, @"Magnification filter cannot be a mipmap mode.");
+	
+	_filterModeMag = filterModeMag;
+}
+
+-(BOOL)isEqual:(id)object
+{
+	if(self == object){
+		return true;
+	} else if([object isKindOfClass:[CCTextureInfo class]]){
+		CCTextureInfo *other = (CCTextureInfo *)object;
+		
+		return (
+			[_textureName isEqualToString:other.textureName] &&
+			_image == other.image &&
+			_wrapModeX == other.wrapModeX &&
+			_wrapModeY == other.wrapModeY &&
+			_filterModeMin == other.filterModeMin &&
+			_filterModeMag == other.filterModeMag
+		);
+	} else {
+		return false;
+	}
+}
+
+-(NSUInteger)hash
+{
+	return (
+		(NSUInteger)_textureName ^
+		(NSUInteger)_image ^ (
+			(_wrapModeX << 0) | (_wrapModeY << 8) | (_filterModeMin << 16) | (_filterModeMag << 24)
+		)
+	);
 }
 
 @end
+
+
+@interface CCTextureCache : CCCache @end
+@implementation CCTextureCache
+
+// The key is either an NSString of the texture's name or a CCTextureInfo object.
+// The shared data is a CCTextureInfoObject.
+- (CCTextureInfo *)createSharedDataForKey:(NSObject<NSCopying> *)key
+{
+	if([key isKindOfClass:[CCTextureInfo class]]){
+		return [key copy];
+	} else {
+		return [[CCTextureInfo alloc] initWithTextureNamed:(NSString *)key];
+	}
+}
+
+// The shared data is a CCTextureInfo. The public object is a CCTexture.
+- (CCTexture *)createPublicObjectForSharedData:(CCTextureInfo *)info
+{
+	CCFileUtils *fileUtils = [CCFileUtils sharedFileUtils];
+	
+	CGFloat contentScale = 1.0;
+	NSString *path = [fileUtils standarizePath:info.textureName];
+	NSString *fullpath = [fileUtils fullPathForFilename:path contentScale:&contentScale];
+	NSAssert(fullpath, @"Could not find file %@", path);
+	
+//	NSString *lowerCase = [fullpath lowercaseString];
+//
+//		if ( [lowerCase hasSuffix:@".pvr"] || [lowerCase hasSuffix:@".pvr.gz"] || [lowerCase hasSuffix:@".pvr.ccz"] )
+//			tex = [self addPVRImage:path];
+//		} else {
+	
+	NSURL *url = [NSURL fileURLWithPath:fullpath];
+	CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)url, NULL);
+	NSAssert(imageSource, @"Could not create image source for %@", path);
+	
+	CGImageRef image = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+	NSAssert(image, @"Could not load image for %@", path);
+	
+	CCTexture *texture = [[CCTexture alloc] initWithCGImage:image contentScale:contentScale];
+	NSAssert(texture, @"Could not create texture for %@", path);
+	
+	CGImageRelease(image);
+	CFRelease(imageSource);
+	
+	CCLOGINFO(@"Texture loaded: %@", path);
+	return texture;
+}
+
+// Don't need to do anything.
+- (void)disposeOfSharedData:(id)data {}
+
+@end
+
 
 
 // If the image has alpha, you can create RGBA8 (32-bit) or RGBA4 (16-bit) or RGB5A1 (16-bit)
@@ -150,33 +250,87 @@ static CCTexturePixelFormat defaultAlphaPixel_format = CCTexturePixelFormat_Defa
 #pragma mark CCTexture2D - Main
 
 @implementation CCTexture
-{
-    CCProxy __weak *_proxy;
-}
 
 @synthesize contentSizeInPixels = _sizeInPixels, pixelFormat = _format, pixelWidth = _width, pixelHeight = _height, name = _name, maxS = _maxS, maxT = _maxT;
 @synthesize premultipliedAlpha = _premultipliedAlpha;
 @synthesize contentScale = _contentScale;
 @synthesize antialiased = _antialiased;
 
-static CCTexture *CCTextureNone = nil;
+static CCTextureCache *CC_TEXTURE_CACHE;
+static CCTexture *CC_TEXTURE_NONE = nil;
+
++(void)flushTextureCache;
+{
+	[CC_TEXTURE_CACHE flush];
+}
+
++(void)resetTextureCache
+{
+	CC_TEXTURE_CACHE = [[CCTextureCache alloc] init];
+}
+
++(void)dumpTextureCacheInfo;
+{
+	NSUInteger count = 0;
+	NSUInteger totalBytes = 0;
+
+	for(id key in CC_TEXTURE_CACHE.entries){
+		CCTexture *tex = [CC_TEXTURE_CACHE rawObjectForKey:key];
+		NSUInteger bpp = [tex bitsPerPixelForFormat];
+		
+		// Each texture takes up width * height * bytesPerPixel bytes.
+		NSUInteger bytes = tex.pixelWidth * tex.pixelHeight * bpp / 8;
+		totalBytes += bytes;
+		count++;
+		
+		NSLog( @"cocos2d: \"%@\"\tid=%lu\t%lu x %lu\t@ %ld bpp =>\t%lu KB",
+			key,
+			(long)tex.name,
+			(long)tex.pixelWidth,
+			(long)tex.pixelHeight,
+			(long)bpp,
+			(long)bytes / 1024
+		);
+	}
+	
+	NSLog( @"cocos2d: CCTextureCache dumpDebugInfo:\t%ld textures,\tfor %lu KB (%.2f MB)", (long)count, (long)totalBytes / 1024, totalBytes / (1024.0f*1024.0f));
+}
 
 +(void)initialize
 {
-	CCTextureNone = [self alloc];
-	CCTextureNone->_name = 0;
-	CCTextureNone->_format = CCTexturePixelFormat_RGBA8888;
-	CCTextureNone->_contentScale = 1.0;
+	[self resetTextureCache];
+	
+	CC_TEXTURE_NONE = [self alloc];
+	CC_TEXTURE_NONE->_name = 0;
+	CC_TEXTURE_NONE->_format = CCTexturePixelFormat_RGBA8888;
+	CC_TEXTURE_NONE->_contentScale = 1.0;
 }
 
 +(instancetype)none
 {
-	return CCTextureNone;
+	return CC_TEXTURE_NONE;
 }
 
 + (id) textureWithFile:(NSString*)file
 {
-    return [[CCTextureCache sharedTextureCache] addImage:file];
+    return [CC_TEXTURE_CACHE objectForKey:file];
+}
+
++(id)textureWithCGImage:(CGImageRef)image name:(NSString *)name
+{
+	// Bypass the usual caching mechanism.
+	CCTexture *texture = [CC_TEXTURE_CACHE rawObjectForKey:name];
+	
+	// If the texture wasn't already present, insert it and make an alias.
+	if(!texture){
+		CCTextureInfo *info = [[CCTextureInfo alloc] initWithImage:image];
+		texture = [CC_TEXTURE_CACHE objectForKey:info];
+		
+		[CC_TEXTURE_CACHE makeAlias:name forKey:info];
+	}
+	
+	
+	return texture;
 }
 
 
@@ -251,33 +405,6 @@ static CCTexture *CCTextureNone = nil;
 
 // -------------------------------------------------------------
 
-- (BOOL)hasProxy
-{
-    @synchronized(self)
-    {
-        // NSLog(@"hasProxy: %p", self);
-        return(_proxy != nil);
-    }
-}
-
-- (CCProxy *)proxy
-{
-    @synchronized(self)
-    {
-        __strong CCProxy *proxy = _proxy;
-
-        if (_proxy == nil)
-        {
-            proxy = [[CCProxy alloc] initWithTarget:self];
-            _proxy = proxy;
-        }
-    
-        return(proxy);
-    }
-}
-
-// -------------------------------------------------------------
-
 - (void) releaseData:(void*)data
 {
 	//Free data
@@ -318,7 +445,7 @@ static CCTexture *CCTextureNone = nil;
 -(CCSpriteFrame*) createSpriteFrame
 {
 	CGRect rectInPixels = {CGPointZero, _sizeInPixels};
-	return [CCSpriteFrame frameWithTexture:(CCTexture *)self.proxy rectInPixels:rectInPixels rotated:NO offset:CGPointZero originalSize:_sizeInPixels];
+	return [CCSpriteFrame frameWithTexture:self rectInPixels:rectInPixels rotated:NO offset:CGPointZero originalSize:_sizeInPixels];
 }
 
 - (void) setAntialiased:(BOOL)antialiased
@@ -348,11 +475,8 @@ static CCTexture *CCTextureNone = nil;
 	CGImageAlphaInfo		info;
 	CGSize					imageSizeInPixels;
 	CCTexturePixelFormat	pixelFormat;
-
-	if(cgImage == NULL) {
-		CCLOG(@"cocos2d: CCTexture2D. Can't create Texture. cgImage is nil");
-		return nil;
-	}
+	
+	NSAssert(cgImage, @"Image is NULL.");
 
 	CCConfiguration *conf = [CCConfiguration sharedConfiguration];
 

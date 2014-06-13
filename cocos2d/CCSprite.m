@@ -32,7 +32,6 @@
 #import "CCSpriteFrameCache.h"
 #import "CCAnimation.h"
 #import "CCAnimationCache.h"
-#import "CCTextureCache.h"
 #import "CCShader.h"
 #import "CCDirector.h"
 #import "Support/CGPointExtension.h"
@@ -177,7 +176,7 @@
 {
 	NSAssert(filename != nil, @"Invalid filename for sprite");
 
-	CCTexture *texture = [[CCTextureCache sharedTextureCache] addImage: filename];
+	CCTexture *texture = [CCTexture textureWithFile:filename];
 	if( texture ) {
 		CGRect rect = CGRectZero;
 		rect.size = texture.contentSize;
@@ -191,7 +190,7 @@
 {
 	NSAssert(filename!=nil, @"Invalid filename for sprite");
 
-	CCTexture *texture = [[CCTextureCache sharedTextureCache] addImage: filename];
+	CCTexture *texture = [CCTexture textureWithFile:filename];
 	if( texture )
 		return [self initWithTexture:texture rect:rect];
 
@@ -220,7 +219,7 @@
 	NSAssert(image!=nil, @"Invalid CGImageRef for sprite");
 
 	// XXX: possible bug. See issue #349. New API should be added
-	CCTexture *texture = [[CCTextureCache sharedTextureCache] addCGImage:image forKey:key];
+	CCTexture *texture = [CCTexture textureWithCGImage:image name:key];
 
 	CGRect rect = CGRectZero;
 	rect.size = texture.contentSize;
