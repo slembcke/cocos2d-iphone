@@ -163,15 +163,10 @@
 	// textures must be power of two
 	NSUInteger powW;
 	NSUInteger powH;
-
-	if( [[CCConfiguration sharedConfiguration] supportsNPOT] ) {
-		powW = pixelW;
-		powH = pixelH;
-	} else {
-		powW = CCNextPOT(pixelW);
-		powH = CCNextPOT(pixelH);
-	}
-
+	
+	powW = pixelW;
+	powH = pixelH;
+	
 	void *data = calloc(powW*powH, 4);
 
 	CCTexture *texture = [[CCTexture alloc] initWithData:data pixelFormat:_pixelFormat pixelsWide:powW pixelsHigh:powH contentSizeInPixels:CGSizeMake(pixelW, pixelH) contentScale:_contentScale];

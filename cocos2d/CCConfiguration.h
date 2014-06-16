@@ -94,9 +94,9 @@ typedef NS_ENUM(NSUInteger, CCDevice) {
 
 /** Whether or not the GPU supports NPOT (Non Power Of Two) textures.
  OpenGL ES 2.0 already supports NPOT (iOS).
-
+ Deprecated since it should return true on virtually every device except very old desktop machines.
  */
-@property (nonatomic, readonly) BOOL supportsNPOT;
+@property (nonatomic, readonly) BOOL supportsNPOT __deprecated;
 
 /** Whether or not PVR Texture Compressed is supported */
 @property (nonatomic, readonly) BOOL supportsPVRTC;

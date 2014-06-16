@@ -520,16 +520,8 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 		pixelFormat = CCTexturePixelFormat_A8;
 	}
 
-	if( ! [conf supportsNPOT]  )
-	{
-		textureWidth = CCNextPOT(CGImageGetWidth(cgImage));
-		textureHeight = CCNextPOT(CGImageGetHeight(cgImage));
-	}
-	else
-	{
-		textureWidth = CGImageGetWidth(cgImage);
-		textureHeight = CGImageGetHeight(cgImage);
-	}
+	textureWidth = CGImageGetWidth(cgImage);
+	textureHeight = CGImageGetHeight(cgImage);
 
 #ifdef __CC_PLATFORM_IOS
 
