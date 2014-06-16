@@ -32,10 +32,6 @@
 /// Remove all textures from the cache.
 +(void)resetTextureCache;
 
-/* These functions are needed to create mutable textures */
-- (void) releaseData:(void*)data;
-- (void*) keepData:(void*)data length:(NSUInteger)length;
-
 /* texture name */
 @property(nonatomic,readonly) GLuint name;
 
@@ -101,7 +97,7 @@ typedef struct _ccTexParams {
  @warning Calling this method could allocate additional texture memory.
  
  */
--(void) setTexParameters: (ccTexParams*) texParams;
+-(void) setTexParameters: (ccTexParams*) texParams __deprecated;
 
 /* sets antialias texture parameters:
  - GL_TEXTURE_MIN_FILTER = GL_LINEAR
@@ -110,7 +106,7 @@ typedef struct _ccTexParams {
  @warning Calling this method could allocate additional texture memory.
  
  */
-- (void) setAntiAliasTexParameters;
+- (void) setAntiAliasTexParameters __deprecated;
 
 /* sets alias texture parameters:
  - GL_TEXTURE_MIN_FILTER = GL_NEAREST
@@ -119,12 +115,12 @@ typedef struct _ccTexParams {
  @warning Calling this method could allocate additional texture memory.
  
  */
-- (void) setAliasTexParameters;
+- (void) setAliasTexParameters __deprecated;
 
 
 /* Generates mipmap images for the texture.
  It only works if the texture size is POT (power of 2).
  */
--(void) generateMipmap;
+-(void) generateMipmap __deprecated;
 
 @end

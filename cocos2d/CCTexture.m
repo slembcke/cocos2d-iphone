@@ -134,6 +134,7 @@
 {
 	CCTextureInfo *copy = [[self.class alloc] init];
 	copy->_textureName = _textureName;
+	copy->_contentScale = _contentScale;
 	copy->_image = CGImageRetain(_image);
 	copy->_wrapModeX = _wrapModeX;
 	copy->_wrapModeY = _wrapModeY;
@@ -190,6 +191,7 @@
 		return (
 			[_textureName isEqualToString:other.textureName] &&
 			_image == other->_image &&
+			_contentScale == other->_contentScale &&
 			_wrapModeX == other->_wrapModeX &&
 			_wrapModeY == other->_wrapModeY &&
 			_filterModeMin == other->_filterModeMin &&
@@ -245,9 +247,6 @@
 		
 		if([lowerCase hasSuffix:@".pvr"] || [lowerCase hasSuffix:@".pvr.gz"] || [lowerCase hasSuffix:@".pvr.ccz"]){
 			return [[CCTexture alloc] initWithPVRFile:path];
-			#warning Finish PVR support.
-//			abort();
-	//		return [self addPVRImage:path];
 		} else {
 			NSURL *url = [NSURL fileURLWithPath:fullpath];
 			CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)url, NULL);
@@ -371,17 +370,20 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 	return texture;
 }
 
-
-- (id) initWithData:(const void*)data pixelFormat:(CCTexturePixelFormat)pixelFormat pixelsWide:(NSUInteger)width pixelsHigh:(NSUInteger)height contentSizeInPixels:(CGSize)sizeInPixels contentScale:(CGFloat)contentScale
+- (id) initWithData:(const void*)data pixelFormat:(CCTexturePixelFormat)pixelFormat pixelSize:(CGSize)pixelSize contentSizeInPixels:(CGSize)sizeInPixels textureInfo:(CCTextureInfo *)info
 {
 	if((self = [super init])) {
+		NSUInteger width = pixelSize.width;
+		NSUInteger height = pixelSize.height;
+		
 		glPushGroupMarkerEXT(0, "CCTexture: Init");
 		
 		// XXX: 32 bits or POT textures uses UNPACK of 4 (is this correct ??? )
-		if( pixelFormat == CCTexturePixelFormat_RGBA8888 || ( CCNextPOT(width)==width && CCNextPOT(height)==height) )
+		if(pixelFormat == CCTexturePixelFormat_RGBA8888 || (CCNextPOT(width) == width && CCNextPOT(height) == height)){
 			glPixelStorei(GL_UNPACK_ALIGNMENT,4);
-		else
+		} else {
 			glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+		}
 
 		glGenTextures(1, &_name);
 		glBindTexture(GL_TEXTURE_2D, _name);
@@ -427,33 +429,28 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 		_format = pixelFormat;
 		_maxS = sizeInPixels.width / (float)width;
 		_maxT = sizeInPixels.height / (float)height;
-
+		_contentScale = info.contentScale;
+		
 		_premultipliedAlpha = NO;
-
 		_hasMipmaps = NO;
-        
-        _antialiased = YES;
-
-		_contentScale = contentScale;
+		_antialiased = YES;
 		
 		glPopGroupMarkerEXT();
 	}
 	return self;
 }
 
+- (id) initWithData:(const void*)data pixelFormat:(CCTexturePixelFormat)pixelFormat pixelsWide:(NSUInteger)width pixelsHigh:(NSUInteger)height contentSizeInPixels:(CGSize)sizeInPixels contentScale:(CGFloat)contentScale
+{
+	// Create a dummy texture info object with the content scale and default wrap/filter settings.
+	CCTextureInfo *info = [[CCTextureInfo alloc] init];
+	info.contentScale = contentScale;
+	
+	CGSize pixelSize = CGSizeMake(width, height);
+	return [self initWithData:data pixelFormat:pixelFormat pixelSize:pixelSize contentSizeInPixels:sizeInPixels textureInfo:info];
+}
+
 // -------------------------------------------------------------
-
-- (void) releaseData:(void*)data
-{
-	//Free data
-	free(data);
-}
-
-- (void*) keepData:(void*)data length:(NSUInteger)length
-{
-	//The texture data mustn't be saved becuase it isn't a mutable texture.
-	return data;
-}
 
 - (void) dealloc
 {
@@ -502,52 +499,30 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 
 - (id) initWithCGImage:(CGImageRef)cgImage contentScale:(CGFloat)contentScale
 {
-	NSUInteger				textureWidth, textureHeight;
-	CGContextRef			context = nil;
-	void*					data = nil;
-	CGColorSpaceRef			colorSpace;
-	void*					tempData;
-	unsigned int*			inPixel32;
-	unsigned short*			outPixel16;
-	BOOL					hasAlpha;
-	CGImageAlphaInfo		info;
-	CGSize					imageSizeInPixels;
-	CCTexturePixelFormat	pixelFormat;
-	
 	NSAssert(cgImage, @"Image is NULL.");
 
-	CCConfiguration *conf = [CCConfiguration sharedConfiguration];
+	CCTexturePixelFormat pixelFormat = defaultAlphaPixel_format;
+	CGColorSpaceRef colorSpace = CGImageGetColorSpace(cgImage);
+	CGImageAlphaInfo alphaInfo = CGImageGetAlphaInfo(cgImage);
 
-	info = CGImageGetAlphaInfo(cgImage);
+	bool hasAlpha = (
+		alphaInfo == kCGImageAlphaPremultipliedLast ||
+		alphaInfo == kCGImageAlphaPremultipliedFirst ||
+		alphaInfo == kCGImageAlphaLast ||
+		alphaInfo == kCGImageAlphaFirst
+	);
 
-#ifdef __CC_PLATFORM_IOS
-
-	// Bug #886. It is present on iOS 4 only
-	unsigned int version = [conf OSVersion];
-	if( version >= CCSystemVersion_iOS_4_0 && version < CCSystemVersion_iOS_5_0 )
-		hasAlpha = ((info == kCGImageAlphaNoneSkipLast) || (info == kCGImageAlphaPremultipliedLast) || (info == kCGImageAlphaPremultipliedFirst) || (info == kCGImageAlphaLast) || (info == kCGImageAlphaFirst) ? YES : NO);
-	else
-#endif // __CC_PLATFORM_IOS
-	
-	hasAlpha = ((info == kCGImageAlphaPremultipliedLast) || (info == kCGImageAlphaPremultipliedFirst) || (info == kCGImageAlphaLast) || (info == kCGImageAlphaFirst) ? YES : NO);
-
-	colorSpace = CGImageGetColorSpace(cgImage);
-
-	if(colorSpace) {
-		if( hasAlpha ) {
-			pixelFormat = defaultAlphaPixel_format;
-			info = kCGImageAlphaPremultipliedLast;
-		}
-		else
-		{
-			info = kCGImageAlphaNoneSkipLast;
+	if(colorSpace){
+		if(hasAlpha){
+			alphaInfo = kCGImageAlphaPremultipliedLast;
+		} else {
+			alphaInfo = kCGImageAlphaNoneSkipLast;
 
 			// Use RGBA8888 if default is RGBA8888, otherwise use RGB565.
 			// DO NOT USE RGB888 since it is the same as RGBA8888, but it is more expensive to create it
-			if( defaultAlphaPixel_format == CCTexturePixelFormat_RGBA8888 )
+			if(defaultAlphaPixel_format == CCTexturePixelFormat_RGBA8888){
 				pixelFormat = CCTexturePixelFormat_RGBA8888;
-			else
-			{
+			} else {
 				pixelFormat = CCTexturePixelFormat_RGB565;
 				CCLOG(@"cocos2d: CCTexture2D: Using RGB565 texture since image has no alpha");
 			}
@@ -558,47 +533,20 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 		pixelFormat = CCTexturePixelFormat_A8;
 	}
 
-	textureWidth = CGImageGetWidth(cgImage);
-	textureHeight = CGImageGetHeight(cgImage);
-
-#ifdef __CC_PLATFORM_IOS
-
-	// iOS 5 BUG:
-	// If width is not word aligned, convert it to word aligned.
-	// http://www.cocos2d-iphone.org/forum/topic/31092
-	if( [conf OSVersion] >= CCSystemVersion_iOS_5_0 )
-	{
-		
-		NSUInteger bpp = [[self class] bitsPerPixelForFormat:pixelFormat];
-		NSUInteger bytes = textureWidth * bpp / 8;
-		
-		// XXX: Should it be 4 or sizeof(int) ??
-		NSUInteger mod = bytes % 4;
-		
-		// Not word aligned ?
-		if( mod != 0 ) {
-			
-			NSUInteger neededBytes = (4 - mod ) / (bpp/8);
-            
-			CCLOGWARN(@"cocos2d: WARNING converting size=(%d,%d) to size=(%d,%d) due to iOS 5.x memory BUG. See: http://www.cocos2d-iphone.org/forum/topic/31092",
-				(unsigned int)textureWidth, (unsigned int)textureHeight, (unsigned int)(textureWidth + neededBytes), (unsigned int)textureHeight );
-			textureWidth = textureWidth + neededBytes;
-		}
+	NSUInteger pixelWidth = CGImageGetWidth(cgImage);
+	NSUInteger pixelHeight = CGImageGetHeight(cgImage);
+	
+	NSUInteger maxTextureSize = [CCConfiguration sharedConfiguration].maxTextureSize;
+	if(pixelWidth > maxTextureSize || pixelHeight > maxTextureSize ) {
+		CCLOGWARN(@"cocos2d: WARNING: Image (%lu x %lu) is larger than the maximum %ld size", (long)pixelWidth, (long)pixelHeight, (long)maxTextureSize);
+		return nil;
 	}
-#endif // IOS
    
-   NSUInteger maxTextureSize = [conf maxTextureSize];
-   if( textureHeight > maxTextureSize || textureWidth > maxTextureSize ) {
-	   CCLOGWARN(@"cocos2d: WARNING: Image (%lu x %lu) is bigger than the supported %ld x %ld",
-			 (long)textureWidth, (long)textureHeight,
-			 (long)maxTextureSize, (long)maxTextureSize);
-	   return nil;
-   }
-   
-	imageSizeInPixels = CGSizeMake(CGImageGetWidth(cgImage), CGImageGetHeight(cgImage));
-
 	// Create the bitmap graphics context
-
+	
+	CGContextRef context = nil;
+	void *data = nil;
+	
 	switch(pixelFormat) {
 		case CCTexturePixelFormat_RGBA8888:
 		case CCTexturePixelFormat_RGBA4444:
@@ -606,110 +554,109 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 		case CCTexturePixelFormat_RGB565:
 		case CCTexturePixelFormat_RGB888:
 			colorSpace = CGColorSpaceCreateDeviceRGB();
-			data = malloc(textureHeight * textureWidth * 4);
-//			info = hasAlpha ? kCGImageAlphaPremultipliedLast : kCGImageAlphaNoneSkipLast;
-//			info = kCGImageAlphaPremultipliedLast;  // issue #886. This patch breaks BMP images.
-			context = CGBitmapContextCreate(data, textureWidth, textureHeight, 8, 4 * textureWidth, colorSpace, info | kCGBitmapByteOrder32Big);
-			CGColorSpaceRelease(colorSpace);
+			data = malloc(pixelHeight * pixelWidth * 4);
+			context = CGBitmapContextCreate(data, pixelWidth, pixelHeight, 8, 4 * pixelWidth, colorSpace, alphaInfo | kCGBitmapByteOrder32Big);
 			break;
 		case CCTexturePixelFormat_A8:
-			data = malloc(textureHeight * textureWidth);
-			info = kCGImageAlphaOnly;
-			context = CGBitmapContextCreate(data, textureWidth, textureHeight, 8, textureWidth, NULL, (CGBitmapInfo)info);
+			data = malloc(pixelHeight * pixelWidth);
+			alphaInfo = kCGImageAlphaOnly;
+			context = CGBitmapContextCreate(data, pixelWidth, pixelHeight, 8, pixelWidth, NULL, (CGBitmapInfo)alphaInfo);
 			break;
 		default:
 			[NSException raise:NSInternalInconsistencyException format:@"Invalid pixel format"];
 	}
-
-
-	CGContextClearRect(context, CGRectMake(0, 0, textureWidth, textureHeight));
-	CGContextTranslateCTM(context, 0, textureHeight - imageSizeInPixels.height);
+	
+	CGColorSpaceRelease(colorSpace);
+	
+	CGContextClearRect(context, CGRectMake(0, 0, pixelWidth, pixelHeight));
+	CGContextTranslateCTM(context, 0, pixelHeight);
 	CGContextScaleCTM(context, 1.0, -1.0);
-	CGContextTranslateCTM(context, 0, -imageSizeInPixels.height);
-	CGContextDrawImage(context, CGRectMake(0, 0, CGImageGetWidth(cgImage), CGImageGetHeight(cgImage)), cgImage);
-
-	// Repack the pixel data into the right format
-
-	if(pixelFormat == CCTexturePixelFormat_RGB565) {
-		//Convert "RRRRRRRRGGGGGGGGBBBBBBBBAAAAAAAA" to "RRRRRGGGGGGBBBBB"
-		tempData = malloc(textureHeight * textureWidth * 2);
-		inPixel32 = (unsigned int*)data;
-		outPixel16 = (unsigned short*)tempData;
-		for(unsigned int i = 0; i < textureWidth * textureHeight; ++i, ++inPixel32)
-			*outPixel16++ = ((((*inPixel32 >> 0) & 0xFF) >> 3) << 11) | ((((*inPixel32 >> 8) & 0xFF) >> 2) << 5) | ((((*inPixel32 >> 16) & 0xFF) >> 3) << 0);
-		free(data);
-		data = tempData;
-
-	}
-
-	else if(pixelFormat == CCTexturePixelFormat_RGB888) {
-		//Convert "RRRRRRRRGGGGGGGGBBBBBBBBAAAAAAAA" to "RRRRRRRRGGGGGGGGBBBBBBB"
-		tempData = malloc(textureHeight * textureWidth * 3);
-		char *inData = (char*)data;
-		char *outData = (char*)tempData;
-		int j=0;
-		for(unsigned int i = 0; i < textureWidth * textureHeight *4; i++) {
-			outData[j++] = inData[i++];
-			outData[j++] = inData[i++];
-			outData[j++] = inData[i++];
-		}
-		free(data);
-		data = tempData;
-		
-	}
-
-	else if (pixelFormat == CCTexturePixelFormat_RGBA4444) {
-		//Convert "RRRRRRRRGGGGGGGGBBBBBBBBAAAAAAAA" to "RRRRGGGGBBBBAAAA"
-		tempData = malloc(textureHeight * textureWidth * 2);
-		inPixel32 = (unsigned int*)data;
-		outPixel16 = (unsigned short*)tempData;
-		for(unsigned int i = 0; i < textureWidth * textureHeight; ++i, ++inPixel32)
-			*outPixel16++ =
-			((((*inPixel32 >> 0) & 0xFF) >> 4) << 12) | // R
-			((((*inPixel32 >> 8) & 0xFF) >> 4) << 8) | // G
-			((((*inPixel32 >> 16) & 0xFF) >> 4) << 4) | // B
-			((((*inPixel32 >> 24) & 0xFF) >> 4) << 0); // A
-
-
-		free(data);
-		data = tempData;
-
-	}
-	else if (pixelFormat == CCTexturePixelFormat_RGB5A1) {
-		//Convert "RRRRRRRRGGGGGGGGBBBBBBBBAAAAAAAA" to "RRRRRGGGGGBBBBBA"
-		/*
-		 Here was a bug.
-		 When you convert RGBA8888 texture to RGB5A1 texture and then render it on black background, you'll see a "ghost" image as if the texture is still RGBA8888. 
-		 On background lighter than the pixel color this effect disappers.
-		 This happens because the old convertion function doesn't premultiply old RGB with new A.
-		 As Result = sourceRGB + destination*(1-source A), then
-		 if Destination = 0000, then Result = source. Here comes the ghost!
-		 We need to check new alpha value first (it may be 1 or 0) and depending on it whether convert RGB values or just set pixel to 0 
-		 */
-		tempData = malloc(textureHeight * textureWidth * 2);
-		inPixel32 = (unsigned int*)data;
-		outPixel16 = (unsigned short*)tempData;
-		for(unsigned int i = 0; i < textureWidth * textureHeight; ++i, ++inPixel32) {
-			if ((*inPixel32 >> 31))// A can be 1 or 0
-				*outPixel16++ =
-				((((*inPixel32 >> 0) & 0xFF) >> 3) << 11) | // R
-				((((*inPixel32 >> 8) & 0xFF) >> 3) << 6) | // G
-				((((*inPixel32 >> 16) & 0xFF) >> 3) << 1) | // B
-				1; // A
-			else
-				*outPixel16++ = 0;
-		}
-		
-		free(data);
-		data = tempData;
-	}
-	self = [self initWithData:data pixelFormat:pixelFormat pixelsWide:textureWidth pixelsHigh:textureHeight contentSizeInPixels:imageSizeInPixels contentScale:contentScale];
-
-	// should be after calling super init
-	_premultipliedAlpha = (info == kCGImageAlphaPremultipliedLast || info == kCGImageAlphaPremultipliedFirst);
-
+	CGContextDrawImage(context, CGRectMake(0, 0, pixelWidth, pixelHeight), cgImage);
 	CGContextRelease(context);
-	[self releaseData:data];
+	
+	#warning These should be moved to a function.
+	// Repack the pixel data into the right format
+//	if(pixelFormat == CCTexturePixelFormat_RGB565) {
+//		//Convert "RRRRRRRRGGGGGGGGBBBBBBBBAAAAAAAA" to "RRRRRGGGGGGBBBBB"
+//		tempData = malloc(textureHeight * textureWidth * 2);
+//		inPixel32 = (unsigned int*)data;
+//		outPixel16 = (unsigned short*)tempData;
+//		for(unsigned int i = 0; i < textureWidth * textureHeight; ++i, ++inPixel32)
+//			*outPixel16++ = ((((*inPixel32 >> 0) & 0xFF) >> 3) << 11) | ((((*inPixel32 >> 8) & 0xFF) >> 2) << 5) | ((((*inPixel32 >> 16) & 0xFF) >> 3) << 0);
+//		free(data);
+//		data = tempData;
+//
+//	}
+//
+//	else if(pixelFormat == CCTexturePixelFormat_RGB888) {
+//		//Convert "RRRRRRRRGGGGGGGGBBBBBBBBAAAAAAAA" to "RRRRRRRRGGGGGGGGBBBBBBB"
+//		tempData = malloc(textureHeight * textureWidth * 3);
+//		char *inData = (char*)data;
+//		char *outData = (char*)tempData;
+//		int j=0;
+//		for(unsigned int i = 0; i < textureWidth * textureHeight *4; i++) {
+//			outData[j++] = inData[i++];
+//			outData[j++] = inData[i++];
+//			outData[j++] = inData[i++];
+//		}
+//		free(data);
+//		data = tempData;
+//		
+//	}
+//
+//	else if (pixelFormat == CCTexturePixelFormat_RGBA4444) {
+//		//Convert "RRRRRRRRGGGGGGGGBBBBBBBBAAAAAAAA" to "RRRRGGGGBBBBAAAA"
+//		tempData = malloc(textureHeight * textureWidth * 2);
+//		inPixel32 = (unsigned int*)data;
+//		outPixel16 = (unsigned short*)tempData;
+//		for(unsigned int i = 0; i < textureWidth * textureHeight; ++i, ++inPixel32)
+//			*outPixel16++ =
+//			((((*inPixel32 >> 0) & 0xFF) >> 4) << 12) | // R
+//			((((*inPixel32 >> 8) & 0xFF) >> 4) << 8) | // G
+//			((((*inPixel32 >> 16) & 0xFF) >> 4) << 4) | // B
+//			((((*inPixel32 >> 24) & 0xFF) >> 4) << 0); // A
+//
+//
+//		free(data);
+//		data = tempData;
+//
+//	}
+//	else if (pixelFormat == CCTexturePixelFormat_RGB5A1) {
+//		//Convert "RRRRRRRRGGGGGGGGBBBBBBBBAAAAAAAA" to "RRRRRGGGGGBBBBBA"
+//		/*
+//		 Here was a bug.
+//		 When you convert RGBA8888 texture to RGB5A1 texture and then render it on black background, you'll see a "ghost" image as if the texture is still RGBA8888. 
+//		 On background lighter than the pixel color this effect disappers.
+//		 This happens because the old convertion function doesn't premultiply old RGB with new A.
+//		 As Result = sourceRGB + destination*(1-source A), then
+//		 if Destination = 0000, then Result = source. Here comes the ghost!
+//		 We need to check new alpha value first (it may be 1 or 0) and depending on it whether convert RGB values or just set pixel to 0 
+//		 */
+//		tempData = malloc(textureHeight * textureWidth * 2);
+//		inPixel32 = (unsigned int*)data;
+//		outPixel16 = (unsigned short*)tempData;
+//		for(unsigned int i = 0; i < textureWidth * textureHeight; ++i, ++inPixel32) {
+//			if ((*inPixel32 >> 31))// A can be 1 or 0
+//				*outPixel16++ =
+//				((((*inPixel32 >> 0) & 0xFF) >> 3) << 11) | // R
+//				((((*inPixel32 >> 8) & 0xFF) >> 3) << 6) | // G
+//				((((*inPixel32 >> 16) & 0xFF) >> 3) << 1) | // B
+//				1; // A
+//			else
+//				*outPixel16++ = 0;
+//		}
+//		
+//		free(data);
+//		data = tempData;
+//	}
+	
+	CGSize size = CGSizeMake(pixelWidth, pixelHeight);
+	if((self = [self initWithData:data pixelFormat:pixelFormat pixelsWide:pixelWidth pixelsHigh:pixelHeight contentSizeInPixels:size contentScale:contentScale])){
+		// should be after calling super init
+		_premultipliedAlpha = (alphaInfo == kCGImageAlphaPremultipliedLast || alphaInfo == kCGImageAlphaPremultipliedFirst);
+	}
+	
+	free(data);
 	
 	return self;
 }

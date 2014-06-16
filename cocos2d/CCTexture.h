@@ -121,25 +121,34 @@ typedef NS_ENUM(NSUInteger, CCTextureInfoFilterMode){
 /// CGImage to load the texture from.
 @property(nonatomic, assign, readonly) CGImageRef image;
 
+/// Content scale of the texture (pixels per point).
+/// A content scale of 0.0 means that the content scale will be calculated automatically. This is the default.
+@property(nonatomic, assign) CGFloat contentScale;
+
 /// Wrapping mode of the texture on the x-axis.
+/// Defaults to CCTextureInfoWrapModeClampToEdge.
 @property(nonatomic, assign) CCTextureInfoWrapMode wrapModeX;
 
 /// Wrapping mode of the texture on the y-axis.
+/// Defaults to CCTextureInfoWrapModeClampToEdge
 @property(nonatomic, assign) CCTextureInfoWrapMode wrapModeY;
 
 /// Convenience property for combined x/y wrap mode.
 @property(nonatomic, assign) CCTextureInfoWrapMode wrapMode;
 
 /// Texture filtering mode of the texture when scaling it down.
+/// Defaults to CCTextureInfoFilterModeLinear.
 @property(nonatomic, assign) CCTextureInfoFilterMode filterModeMin;
 
 /// Texture filtering mode of the texture when scaling it up.
+/// Defaults to CCTextureInfoFilterModeLinear.
 @property(nonatomic, assign) CCTextureInfoFilterMode filterModeMag;
 
 /// Convenience property for combined min/mag filter mode.
 @property(nonatomic, assign) CCTextureInfoFilterMode filterMode;
 
 /// If the texture should have mipmaps generated automatically when it loads.
+/// Defaults to NO.
 @property(nonatomic, assign) BOOL generateMipmaps;
 
 @end
