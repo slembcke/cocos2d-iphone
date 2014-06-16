@@ -61,15 +61,6 @@
 // Forward class checks for assertions.
 -(BOOL)isKindOfClass:(Class)aClass {return [_target isKindOfClass:aClass];}
 
-// Make concrete implementations for CCTexture methods commonly called at runtime.
--(GLuint)name {return [(CCTexture *)_target name];}
--(CGFloat)contentScale {return [_target contentScale];}
--(CGSize)contentSize {return [_target contentSize];}
--(NSUInteger)pixelWidth {return [_target pixelWidth];}
--(NSUInteger)pixelHeight {return [_target pixelHeight];}
--(BOOL)hasPremultipliedAlpha {return [_target hasPremultipliedAlpha];}
--(CCSpriteFrame *)createSpriteFrame {return [_target createSpriteFrame];}
-
 // Make concrete implementations for CCSpriteFrame methods commonly called at runtime.
 -(CGRect)rect {return [_target rect];}
 -(CGPoint)offset {return [_target offset];}

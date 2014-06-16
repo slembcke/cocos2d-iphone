@@ -8,8 +8,6 @@
 #import "cocos2d.h"
 #import "TestBase.h"
 
-#import "CCTexture_Private.h"
-
 @interface TextureTest : TestBase @end
 
 // Included images generated using PVRTexTool:
@@ -157,40 +155,31 @@
 }
 #endif
 
--(void) setupNonPowerOfTwoTextureTest
-{
-	[self loadAndDisplayImageNamed: @"test_1021x1024.png" withTitle: @"1021x1024 png. Watch for memory leaks with Instruments. See http://www.cocos2d-iphone.org/forum/topic/31092"];
-}
+//-(void) setupNonPowerOfTwoTextureTest
+//{
+//	[self loadAndDisplayImageNamed: @"test_1021x1024.png" withTitle: @"1021x1024 png. Watch for memory leaks with Instruments. See http://www.cocos2d-iphone.org/forum/topic/31092"];
+//}
 
 -(void) setupTestTextureAntialiasModesTest
 {
-	CGSize s = [[CCDirector sharedDirector] viewSize];
+	{
+		CCTextureInfo *info = [CCTextureInfo infoWithTextureNamed:@"powered.png"];
+		info.filterMode = CCTextureInfoFilterModeNearest;
+		
+		CCSprite *sprite = [CCSprite spriteWithTexture:[CCTexture textureForInfo:info]];
+		sprite.positionType = CCPositionTypeNormalized;
+		sprite.position = ccp(0.3, 0.5);
+		[self.contentNode addChild:sprite];
+	}
 	
-	// The purpose of the 4 repetitions of the texture is to make sure the antialias state doesn't leak in the shared texture cache.
+	{
+		CCSprite *sprite = [CCSprite spriteWithImageNamed:@"powered.png"];
+		sprite.positionType = CCPositionTypeNormalized;
+		sprite.position = ccp(0.7, 0.5);
+		[self.contentNode addChild:sprite];
+	}
 	
-	CCSprite *sprite = [self loadAndDisplayImageNamed: @"powered.png" withTitle: @""];
-	[sprite setPosition:ccp(s.width/5*1, s.height/2)];
-	[[sprite texture] setAntialiased:NO];
-	[sprite setScale:2];
-//	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
-	
-	sprite = [self loadAndDisplayImageNamed: @"powered.png" withTitle: @""];
-	[sprite setPosition:ccp(s.width/5*2, s.height/2)];
-	[[sprite texture] setAntialiased:YES];
-	[sprite setScale:2];
-//	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
-	
-	sprite = [self loadAndDisplayImageNamed: @"powered.png" withTitle: @""];
-	[sprite setPosition:ccp(s.width/5*3, s.height/2)];
-	[[sprite texture] setAntialiased:NO];	[sprite setScale:2];
-//	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
-	
-	sprite = [self loadAndDisplayImageNamed: @"powered.png" withTitle: @""];
-	[sprite setPosition:ccp(s.width/5*4, s.height/2)];
-	[[sprite texture] setAntialiased:YES];	[sprite setScale:2];
-//	[[CCTextureCache sharedTextureCache] removeTextureForKey:@"powered.png"];
-	
-	self.subTitle = @"Images should appear: aliased, antialiased, aliased, antialiased\n The purpose of the 4 repetitions of the texture is to make sure the antialias state doesn't leak in the shared texture cache.";
+	self.subTitle = @"";
 
 }
 
@@ -199,14 +188,12 @@
 	self.subTitle = @"Texture GL_REPEAT";
 	
 	CGSize s = [[CCDirector sharedDirector] viewSize];
-
-	// requires a power of two image
-	CCTexture* texture = [CCTexture textureWithFile:@"test_image.png"];
 	
-	CCSprite *img = [CCSprite spriteWithTexture:texture rect:CGRectMake(0, 0, 800, 600)];
+	CCTextureInfo *info = [CCTextureInfo infoWithTextureNamed:@"test_image.png"];
+	info.wrapMode = CCTextureInfoWrapModeRepeat;
+	
+	CCSprite *img = [CCSprite spriteWithTexture:[CCTexture textureForInfo:info] rect:CGRectMake(0, 0, 800, 600)];
 	img.position = ccp( s.width/2.0f, s.height/2.0f);
-	ccTexParams params = {GL_LINEAR,GL_LINEAR,GL_REPEAT,GL_REPEAT};
-	[img.texture setTexParameters:&params];
 
 	[self.contentNode addChild:img];
 }

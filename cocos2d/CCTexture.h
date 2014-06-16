@@ -112,14 +112,14 @@ typedef NS_ENUM(NSUInteger, CCTextureInfoFilterMode){
 
 @interface CCTextureInfo : NSObject <NSCopying>
 
--(instancetype)initWithTextureNamed:(NSString *)name;
--(instancetype)initWithImage:(CGImageRef)image;
++(instancetype)infoWithTextureNamed:(NSString *)name;
++(instancetype)infoWithImage:(CGImageRef)image;
 
 /// Filename to load the texture from.
-@property(nonatomic, copy) NSString *textureName;
+@property(nonatomic, copy, readonly) NSString *textureName;
 
 /// CGImage to load the texture from.
-@property(nonatomic, assign) CGImageRef image;
+@property(nonatomic, assign, readonly) CGImageRef image;
 
 /// Wrapping mode of the texture on the x-axis.
 @property(nonatomic, assign) CCTextureInfoWrapMode wrapModeX;
@@ -127,11 +127,17 @@ typedef NS_ENUM(NSUInteger, CCTextureInfoFilterMode){
 /// Wrapping mode of the texture on the y-axis.
 @property(nonatomic, assign) CCTextureInfoWrapMode wrapModeY;
 
+/// Convenience property for combined x/y wrap mode.
+@property(nonatomic, assign) CCTextureInfoWrapMode wrapMode;
+
 /// Texture filtering mode of the texture when scaling it down.
 @property(nonatomic, assign) CCTextureInfoFilterMode filterModeMin;
 
 /// Texture filtering mode of the texture when scaling it up.
 @property(nonatomic, assign) CCTextureInfoFilterMode filterModeMag;
+
+/// Convenience property for combined min/mag filter mode.
+@property(nonatomic, assign) CCTextureInfoFilterMode filterMode;
 
 /// If the texture should have mipmaps generated automatically when it loads.
 @property(nonatomic, assign) BOOL generateMipmaps;
@@ -209,7 +215,7 @@ typedef NS_ENUM(NSUInteger, CCTexturePixelFormat) {
 /// -----------------------------------------------------------------------
 
 /**
- *  Creates and returns a new texture, based on  the specified file path value.
+ *  Creates and returns a new texture, based on the specified file path value.
  *  If the texture has already been loaded, and resides in cache, the previously created texture is returned.
  *
  *  @param file File path to load (should not include any suffixes).
@@ -217,6 +223,16 @@ typedef NS_ENUM(NSUInteger, CCTexturePixelFormat) {
  *  @return The CCTexture object.
  */
 +(instancetype)textureWithFile:(NSString*)file;
+
+/**
+ *  Creates and returns a new texture, based on the specified texture info object.
+ *  If the texture has already been loaded, and resides in cache, the previously created texture is returned.
+ *
+ *  @param info Texture info object describing the texture to load.
+ *
+ *  @return The CCTexture object.
+ */
++(id)textureForInfo:(CCTextureInfo *)info;
 
 /**
  *  Creates and returns a new texture from the CGImageRef.
