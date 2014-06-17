@@ -70,6 +70,7 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 
 @class CCSpriteFrame;
 @class CCShader;
+@class CCTexture;
 
 
 /// Textures can be set to clamp to their edges or repeat.
@@ -110,16 +111,21 @@ typedef NS_ENUM(NSUInteger, CCTextureInfoFilterMode){
 };
 
 
+typedef CCTexture *(^CCTextureLoaderBlock)();
+
+
 @interface CCTextureInfo : NSObject <NSCopying>
+
+-(instancetype)initWithKey:(id)key loader:(CCTextureLoaderBlock)loader;
 
 +(instancetype)infoWithTextureNamed:(NSString *)name;
 +(instancetype)infoWithImage:(CGImageRef)image;
 
-/// Filename to load the texture from.
-@property(nonatomic, copy, readonly) NSString *textureName;
+/// Object reference used for checking equality for this texture info object.
+@property(nonatomic, strong, readonly) id key;
 
-/// CGImage to load the texture from.
-@property(nonatomic, assign, readonly) CGImageRef image;
+/// Block that is invoked to load the texture for this info.
+@property(nonatomic, strong, readonly) CCTextureLoaderBlock loader;
 
 /// Content scale of the texture (pixels per point).
 /// A content scale of 0.0 means that the content scale will be calculated automatically. This is the default.

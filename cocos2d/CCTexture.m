@@ -98,9 +98,12 @@
 // Suppress automatic iVar creation.
 @dynamic wrapMode, filterMode;
 
--(id)init
+-(instancetype)initWithKey:(id)key loader:(CCTextureLoaderBlock)loader;
 {
 	if((self = [super init])){
+		_key = key;
+		_loader = loader;
+		
 		_wrapModeX = CCTextureInfoWrapModeClampToEdge;
 		_wrapModeY = CCTextureInfoWrapModeClampToEdge;
 		_filterModeMin = CCTextureInfoFilterModeLinear;
@@ -110,32 +113,66 @@
 	return self;
 }
 
+-(CGFloat)coalesceContentScale:(CGFloat)fallback
+{
+	return (_contentScale > 0.0 ? _contentScale : fallback);
+}
+
 +(instancetype)infoWithTextureNamed:(NSString *)name
 {
 	NSAssert(name, @"Texture name cannot be nil.");
+	name = [name copy];
 	
-	CCTextureInfo *info = [[self alloc] init];
-	info->_textureName = [name copy];
+	__weak typeof(self) weakself = self;
 	
-	return info;
+	return [[self alloc] initWithKey:name loader:^{
+		CCFileUtils *fileUtils = [CCFileUtils sharedFileUtils];
+		
+		CGFloat contentScale = 1.0;
+		NSString *path = [fileUtils standarizePath:name];
+		NSString *fullpath = [fileUtils fullPathForFilename:path contentScale:&contentScale];
+		NSAssert(fullpath, @"Could not find file %@", path);
+		
+		NSString *lowerCase = [fullpath lowercaseString];
+		
+		if([lowerCase hasSuffix:@".pvr"] || [lowerCase hasSuffix:@".pvr.gz"] || [lowerCase hasSuffix:@".pvr.ccz"]){
+			return [[CCTexture alloc] initWithPVRFile:path];
+		} else {
+			NSURL *url = [NSURL fileURLWithPath:fullpath];
+			CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)url, NULL);
+			NSAssert(imageSource, @"Could not create image source for %@", path);
+			
+			CGImageRef image = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+			NSAssert(image, @"Could not load image for %@", path);
+			
+			CCTexture *texture = [[CCTexture alloc] initWithCGImage:image contentScale:contentScale];
+			NSAssert(texture, @"Could not create texture for %@", path);
+			
+			CGImageRelease(image);
+			CFRelease(imageSource);
+			
+			CCLOGINFO(@"Texture loaded: %@", path);
+			return texture;
+		}
+	}];
 }
 
 +(instancetype)infoWithImage:(CGImageRef)image;
 {
 	NSAssert(image, @"Texture image cannot be NULL.");
 	
-	CCTextureInfo *info = [[self alloc] init];
-	info->_image = CGImageRetain(image);
-	
-	return info;
+	__weak typeof(self) weakself = self;
+	return [[self alloc] initWithKey:(__bridge id)image loader:^CCTexture *{
+		return [[CCTexture alloc] initWithCGImage:image contentScale:1.0];
+	}];
 }
 
 -(id)copyWithZone:(NSZone *)zone
 {
 	CCTextureInfo *copy = [[self.class alloc] init];
-	copy->_textureName = _textureName;
+	copy->_key = _key;
+	copy->_loader = _loader;
 	copy->_contentScale = _contentScale;
-	copy->_image = CGImageRetain(_image);
 	copy->_wrapModeX = _wrapModeX;
 	copy->_wrapModeY = _wrapModeY;
 	copy->_filterModeMin = _filterModeMin;
@@ -143,11 +180,6 @@
 	copy->_generateMipmaps = _generateMipmaps;
 	
 	return copy;
-}
-
--(void)dealloc
-{
-	if(_image) CGImageRelease(_image);
 }
 
 -(void)setFilterModeMag:(CCTextureInfoFilterMode)filterModeMag
@@ -189,8 +221,7 @@
 		CCTextureInfo *other = (CCTextureInfo *)object;
 		
 		return (
-			[_textureName isEqualToString:other.textureName] &&
-			_image == other->_image &&
+			[_key isEqual:other->_key] &&
 			_contentScale == other->_contentScale &&
 			_wrapModeX == other->_wrapModeX &&
 			_wrapModeY == other->_wrapModeY &&
@@ -205,8 +236,7 @@
 -(NSUInteger)hash
 {
 	return (
-		(NSUInteger)_textureName ^
-		(NSUInteger)_image ^ (
+		(NSUInteger)_key ^ (
 			(_wrapModeX << 0) | (_wrapModeY << 8) | (_filterModeMin << 16) | (_filterModeMag << 24)
 		)
 	);
@@ -232,39 +262,7 @@
 // The shared data is a CCTextureInfo. The public object is a CCTexture.
 - (CCTexture *)createPublicObjectForSharedData:(CCTextureInfo *)info
 {
-	if(info.image){
-		#warning Should the texture info allow you to override the scale?
-		return [[CCTexture alloc] initWithCGImage:info.image contentScale:1.0];
-	} else {
-		CCFileUtils *fileUtils = [CCFileUtils sharedFileUtils];
-		
-		CGFloat contentScale = 1.0;
-		NSString *path = [fileUtils standarizePath:info.textureName];
-		NSString *fullpath = [fileUtils fullPathForFilename:path contentScale:&contentScale];
-		NSAssert(fullpath, @"Could not find file %@", path);
-		
-		NSString *lowerCase = [fullpath lowercaseString];
-		
-		if([lowerCase hasSuffix:@".pvr"] || [lowerCase hasSuffix:@".pvr.gz"] || [lowerCase hasSuffix:@".pvr.ccz"]){
-			return [[CCTexture alloc] initWithPVRFile:path];
-		} else {
-			NSURL *url = [NSURL fileURLWithPath:fullpath];
-			CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)url, NULL);
-			NSAssert(imageSource, @"Could not create image source for %@", path);
-			
-			CGImageRef image = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
-			NSAssert(image, @"Could not load image for %@", path);
-			
-			CCTexture *texture = [[CCTexture alloc] initWithCGImage:image contentScale:contentScale];
-			NSAssert(texture, @"Could not create texture for %@", path);
-			
-			CGImageRelease(image);
-			CFRelease(imageSource);
-			
-			CCLOGINFO(@"Texture loaded: %@", path);
-			return texture;
-		}
-	}
+	return info.loader();
 }
 
 // Don't need to do anything.
@@ -677,6 +675,8 @@ static BOOL _PVRHaveAlphaPremultiplied = YES;
 
 	if( (self = [super init]) ) {
 		CCTexturePVR *pvr = [[CCTexturePVR alloc] initWithContentsOfFile:fullpath];
+		NSAssert(pvr, );
+		
 		if( pvr ) {
 			pvr.retainName = YES;	// don't dealloc texture on release
 
