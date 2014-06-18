@@ -207,21 +207,14 @@ typedef NS_ENUM(NSUInteger, CCTexturePixelFormat) {
  *  Be aware that the content of the generated textures will be upside-down!
  */
 @interface CCTexture : NSObject {
-	GLuint						_name;
-	CGSize						_sizeInPixels;
+	CGSize _sizeInPixels;
 	CGFloat _contentScale;
-	NSUInteger					_width,
-								_height;
-	CCTexturePixelFormat		_format;
-	GLfloat						_maxS,
-								_maxT;
-	BOOL						_premultipliedAlpha;
-	BOOL						_hasMipmaps;
-    
-    BOOL                        _antialiased;
-
-	// Needed for drawAtRect, drawInPoint.
-	CCShader					*_shaderProgram;
+	NSUInteger _width, _height;
+	CCTexturePixelFormat _format;
+	GLfloat _maxS, _maxT;
+	BOOL _premultipliedAlpha;
+	BOOL _hasMipmaps;
+	BOOL _antialiased;
 }
 
 
@@ -393,8 +386,3 @@ typedef NS_ENUM(NSUInteger, CCTexturePixelFormat) {
 +(NSUInteger)bitsPerPixelForFormat:(CCTexturePixelFormat)format;
 
 @end
-
-
-
-
-

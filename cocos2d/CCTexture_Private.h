@@ -32,9 +32,6 @@
 /// Remove all textures from the cache.
 +(void)resetTextureCache;
 
-/* texture name */
-@property(nonatomic,readonly) GLuint name;
-
 /* texture max S */
 @property(nonatomic,readwrite) GLfloat maxS;
 /* texture max T */
@@ -90,7 +87,11 @@ typedef struct _ccTexParams {
 	GLuint	wrapT;
 } ccTexParams;
 
-@interface CCTexture (GLFilter)
+@interface CCTextureGL : CCTexture
+
+/* texture name */
+@property(nonatomic,readonly) GLuint name;
+
 /* sets the min filter, mag filter, wrap s and wrap t texture parameters.
  If the texture size is NPOT (non power of 2), then in can only use GL_CLAMP_TO_EDGE in GL_TEXTURE_WRAP_{S,T}.
  
@@ -98,6 +99,7 @@ typedef struct _ccTexParams {
  
  */
 -(void) setTexParameters: (ccTexParams*) texParams __deprecated;
+
 
 /* sets antialias texture parameters:
  - GL_TEXTURE_MIN_FILTER = GL_LINEAR

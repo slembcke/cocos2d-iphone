@@ -154,7 +154,7 @@
 	//  - easier to render
 	// cons:
 	//  - difficult to scale / rotate / etc.
-	[self.texture setAliasTexParameters];
+	[(CCTextureGL *)self.texture setAliasTexParameters];
 
 	// Parse cocos2d properties
 	[self parseInternalProperties];

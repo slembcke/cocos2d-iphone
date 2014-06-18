@@ -281,13 +281,16 @@ static CCTexturePixelFormat defaultAlphaPixel_format = CCTexturePixelFormat_Defa
 
 @implementation CCTexture
 
-@synthesize contentSizeInPixels = _sizeInPixels, pixelFormat = _format, pixelWidth = _width, pixelHeight = _height, name = _name, maxS = _maxS, maxT = _maxT;
-@synthesize premultipliedAlpha = _premultipliedAlpha;
-@synthesize contentScale = _contentScale;
-@synthesize antialiased = _antialiased;
+@synthesize contentSizeInPixels = _sizeInPixels, pixelFormat = _format, pixelWidth = _width, pixelHeight = _height;
 
 static CCTextureCache *CC_TEXTURE_CACHE;
-static CCTexture *CC_TEXTURE_NONE = nil;
+
++(void)initialize
+{
+	if(self == [CCTexture class]){
+		[self resetTextureCache];
+	}
+}
 
 +(void)flushTextureCache;
 {
@@ -313,9 +316,9 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 		totalBytes += bytes;
 		count++;
 		
-		NSLog( @"cocos2d: \"%@\"\tid=%lu\t%lu x %lu\t@ %ld bpp =>\t%lu KB",
+		NSLog( @"cocos2d: \"%@\"\t%lu x %lu\t@ %ld bpp =>\t%lu KB",
 			key,
-			(long)tex.name,
+//			(long)tex.name,
 			(long)tex.pixelWidth,
 			(long)tex.pixelHeight,
 			(long)bpp,
@@ -326,19 +329,9 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 	NSLog( @"cocos2d: CCTextureCache dumpDebugInfo:\t%ld textures,\tfor %lu KB (%.2f MB)", (long)count, (long)totalBytes / 1024, totalBytes / (1024.0f*1024.0f));
 }
 
-+(void)initialize
-{
-	[self resetTextureCache];
-	
-	CC_TEXTURE_NONE = [self alloc];
-	CC_TEXTURE_NONE->_name = 0;
-	CC_TEXTURE_NONE->_format = CCTexturePixelFormat_RGBA8888;
-	CC_TEXTURE_NONE->_contentScale = 1.0;
-}
-
 +(instancetype)none
 {
-	return CC_TEXTURE_NONE;
+	return [CCTextureGL none];
 }
 
 + (id) textureWithFile:(NSString*)file
@@ -370,71 +363,9 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 
 - (id) initWithData:(const void*)data pixelFormat:(CCTexturePixelFormat)pixelFormat pixelSize:(CGSize)pixelSize contentSizeInPixels:(CGSize)sizeInPixels textureInfo:(CCTextureInfo *)info
 {
-	if((self = [super init])) {
-		NSUInteger width = pixelSize.width;
-		NSUInteger height = pixelSize.height;
-		
-		glPushGroupMarkerEXT(0, "CCTexture: Init");
-		
-		// XXX: 32 bits or POT textures uses UNPACK of 4 (is this correct ??? )
-		if(pixelFormat == CCTexturePixelFormat_RGBA8888 || (CCNextPOT(width) == width && CCNextPOT(height) == height)){
-			glPixelStorei(GL_UNPACK_ALIGNMENT,4);
-		} else {
-			glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-		}
-
-		glGenTextures(1, &_name);
-		glBindTexture(GL_TEXTURE_2D, _name);
-		
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
-
-		// Specify OpenGL texture image
-
-		switch(pixelFormat)
-		{
-			case CCTexturePixelFormat_RGBA8888:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-				break;
-			case CCTexturePixelFormat_RGBA4444:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, data);
-				break;
-			case CCTexturePixelFormat_RGB5A1:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, data);
-				break;
-			case CCTexturePixelFormat_RGB565:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei) width, (GLsizei) height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, data);
-				break;
-			case CCTexturePixelFormat_RGB888:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei) width, (GLsizei) height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-				break;
-			case CCTexturePixelFormat_AI88:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA, (GLsizei) width, (GLsizei) height, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, data);
-				break;
-			case CCTexturePixelFormat_A8:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, (GLsizei) width, (GLsizei) height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data);
-				break;
-			default:
-				[NSException raise:NSInternalInconsistencyException format:@""];
-
-		}
-
-		_sizeInPixels  = sizeInPixels;
-		_width = width;
-		_height = height;
-		_format = pixelFormat;
-		_maxS = sizeInPixels.width / (float)width;
-		_maxT = sizeInPixels.height / (float)height;
-		_contentScale = info.contentScale;
-		
-		_premultipliedAlpha = NO;
-		_hasMipmaps = NO;
-		_antialiased = YES;
-		
-		glPopGroupMarkerEXT();
+	if((self = [[CCTextureGL alloc] initWithData:data pixelFormat:pixelFormat pixelSize:pixelSize contentSizeInPixels:sizeInPixels textureInfo:info])){
 	}
+	
 	return self;
 }
 
@@ -450,20 +381,9 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 
 // -------------------------------------------------------------
 
-- (void) dealloc
-{
-	CCLOGINFO(@"cocos2d: deallocing %@", self);
-
-	if( _name ){
-		glPushGroupMarkerEXT(0, "CCTexture: Dealloc");
-		glDeleteTextures(1, &_name);
-		glPopGroupMarkerEXT();
-	}
-}
-
 - (NSString*) description
 {
-	return [NSString stringWithFormat:@"<%@ = %p | Name = %i | Dimensions = %lux%lu | Pixel format = %@ | Coordinates = (%.2f, %.2f)>", [self class], self, _name, (unsigned long)_width, (unsigned long)_height, [self stringForFormat], _maxS, _maxT];
+	return [NSString stringWithFormat:@"<%@ = %p | Dimensions = %lux%lu | Pixel format = %@ | Coordinates = (%.2f, %.2f)>", [self class], self, (unsigned long)_width, (unsigned long)_height, [self stringForFormat], _maxS, _maxT];
 }
 
 -(CGSize) contentSize
@@ -479,13 +399,6 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 {
 	CGRect rectInPixels = {CGPointZero, _sizeInPixels};
 	return [CCSpriteFrame frameWithTexture:self rectInPixels:rectInPixels rotated:NO offset:CGPointZero originalSize:_sizeInPixels];
-}
-
-- (void) setAntialiased:(BOOL)antialiased
-{
-    _antialiased = antialiased;
-    if (antialiased) [self setAntiAliasTexParameters];
-    else [self setAliasTexParameters];
 }
 
 @end
@@ -668,6 +581,165 @@ static CCTexture *CC_TEXTURE_NONE = nil;
 // By default PVR images are treated as if they have the alpha channel premultiplied
 static BOOL _PVRHaveAlphaPremultiplied = YES;
 
++(void) PVRImagesHavePremultipliedAlpha:(BOOL)haveAlphaPremultiplied
+{
+	_PVRHaveAlphaPremultiplied = haveAlphaPremultiplied;
+}
+@end
+
+//
+// Texture options for images that contains alpha
+//
+@implementation CCTexture (PixelFormat)
++(void) setDefaultAlphaPixelFormat:(CCTexturePixelFormat)format
+{
+	defaultAlphaPixel_format = format;
+}
+
++(CCTexturePixelFormat) defaultAlphaPixelFormat
+{
+	return defaultAlphaPixel_format;
+}
+
++(NSUInteger) bitsPerPixelForFormat:(CCTexturePixelFormat)format
+{
+	NSDictionary *lookup = @{
+		@(CCTexturePixelFormat_RGBA8888): @32,
+		@(CCTexturePixelFormat_RGB888): @32,
+		@(CCTexturePixelFormat_RGB565): @16,
+		@(CCTexturePixelFormat_RGBA4444): @16,
+		@(CCTexturePixelFormat_RGB5A1): @16,
+		@(CCTexturePixelFormat_AI88): @16,
+		@(CCTexturePixelFormat_A8): @8,
+		@(CCTexturePixelFormat_I8): @8,
+		@(CCTexturePixelFormat_PVRTC4): @4,
+		@(CCTexturePixelFormat_PVRTC2): @2,
+	};
+	
+	NSNumber *bpp = lookup[@(format)];
+	NSAssert1(bpp, @"bitsPerPixelForFormat: %ld, unrecognised pixel format", (long)format);
+	
+	return bpp.unsignedIntegerValue;
+}
+
+-(NSUInteger) bitsPerPixelForFormat
+{
+	return [[self class] bitsPerPixelForFormat:_format];
+}
+
+-(NSString *) stringForFormat
+{
+	NSDictionary *lookup = @{
+		@(CCTexturePixelFormat_RGBA8888): @"RGBA8888",
+		@(CCTexturePixelFormat_RGB888): @"RGB888",
+		@(CCTexturePixelFormat_RGB565): @"RGB565",
+		@(CCTexturePixelFormat_RGBA4444): @"RGBA4444",
+		@(CCTexturePixelFormat_RGB5A1): @"RGB5A1",
+		@(CCTexturePixelFormat_AI88): @"AI88",
+		@(CCTexturePixelFormat_A8): @"A8",
+		@(CCTexturePixelFormat_I8): @"I8",
+		@(CCTexturePixelFormat_PVRTC4): @"PVRTC4",
+		@(CCTexturePixelFormat_PVRTC2): @"PVRTC2",
+	};
+	
+	NSString *description = lookup[@(_format)];
+	NSAssert1(description , @"stringForFormat: %ld, unrecognised pixel format", (long)_format);
+	
+	return  description;
+}
+
+@end
+
+
+@implementation CCTextureGL
+
+static CCTextureGL *CC_TEXTURE_GL_NONE = nil;
+
++(void)initialize
+{
+	if(self == [CCTextureGL class]){
+		CC_TEXTURE_GL_NONE = [self alloc];
+		CC_TEXTURE_GL_NONE->_name = 0;
+		CC_TEXTURE_GL_NONE->_format = CCTexturePixelFormat_RGBA8888;
+		CC_TEXTURE_GL_NONE->_contentScale = 1.0;
+	}
+}
+
++(instancetype)none
+{
+	return CC_TEXTURE_GL_NONE;
+}
+
+- (id) initWithData:(const void*)data pixelFormat:(CCTexturePixelFormat)pixelFormat pixelSize:(CGSize)pixelSize contentSizeInPixels:(CGSize)sizeInPixels textureInfo:(CCTextureInfo *)info
+{
+	if((self = [super init])) {
+		NSUInteger width = pixelSize.width;
+		NSUInteger height = pixelSize.height;
+		
+		glPushGroupMarkerEXT(0, "CCTexture: Init");
+		
+		// XXX: 32 bits or POT textures uses UNPACK of 4 (is this correct ??? )
+		if(pixelFormat == CCTexturePixelFormat_RGBA8888 || (CCNextPOT(width) == width && CCNextPOT(height) == height)){
+			glPixelStorei(GL_UNPACK_ALIGNMENT,4);
+		} else {
+			glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+		}
+
+		glGenTextures(1, &_name);
+		glBindTexture(GL_TEXTURE_2D, _name);
+		
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+
+		// Specify OpenGL texture image
+
+		switch(pixelFormat)
+		{
+			case CCTexturePixelFormat_RGBA8888:
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+				break;
+			case CCTexturePixelFormat_RGBA4444:
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, data);
+				break;
+			case CCTexturePixelFormat_RGB5A1:
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei) width, (GLsizei) height, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, data);
+				break;
+			case CCTexturePixelFormat_RGB565:
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei) width, (GLsizei) height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, data);
+				break;
+			case CCTexturePixelFormat_RGB888:
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei) width, (GLsizei) height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+				break;
+			case CCTexturePixelFormat_AI88:
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA, (GLsizei) width, (GLsizei) height, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, data);
+				break;
+			case CCTexturePixelFormat_A8:
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, (GLsizei) width, (GLsizei) height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data);
+				break;
+			default:
+				[NSException raise:NSInternalInconsistencyException format:@""];
+
+		}
+
+		_sizeInPixels  = sizeInPixels;
+		_width = width;
+		_height = height;
+		_format = pixelFormat;
+		_maxS = sizeInPixels.width / (float)width;
+		_maxT = sizeInPixels.height / (float)height;
+		_contentScale = info.contentScale;
+		
+		_premultipliedAlpha = NO;
+		_hasMipmaps = NO;
+		_antialiased = YES;
+		
+		glPopGroupMarkerEXT();
+	}
+	return self;
+}
+
 -(id) initWithPVRFile: (NSString*) relPath
 {
 	CGFloat contentScale;
@@ -675,7 +747,7 @@ static BOOL _PVRHaveAlphaPremultiplied = YES;
 
 	if( (self = [super init]) ) {
 		CCTexturePVR *pvr = [[CCTexturePVR alloc] initWithContentsOfFile:fullpath];
-		NSAssert(pvr, );
+		NSAssert(pvr, @"PVR file failed to load.");
 		
 		if( pvr ) {
 			pvr.retainName = YES;	// don't dealloc texture on release
@@ -701,22 +773,23 @@ static BOOL _PVRHaveAlphaPremultiplied = YES;
 	return self;
 }
 
-+(void) PVRImagesHavePremultipliedAlpha:(BOOL)haveAlphaPremultiplied
+- (void) dealloc
 {
-	_PVRHaveAlphaPremultiplied = haveAlphaPremultiplied;
+	CCLOGINFO(@"cocos2d: deallocing %@", self);
+
+	if( _name ){
+		glPushGroupMarkerEXT(0, "CCTexture: Dealloc");
+		glDeleteTextures(1, &_name);
+		glPopGroupMarkerEXT();
+	}
 }
-@end
 
-#pragma mark -
-#pragma mark CCTexture2D - Drawing
-
-#pragma mark -
-#pragma mark CCTexture2D - GLFilter
-
-//
-// Use to apply MIN/MAG filter
-//
-@implementation CCTexture (GLFilter)
+- (void) setAntialiased:(BOOL)antialiased
+{
+    _antialiased = antialiased;
+    if (antialiased) [self setAntiAliasTexParameters];
+    else [self setAliasTexParameters];
+}
 
 -(void) generateMipmap
 {
@@ -782,117 +855,5 @@ static BOOL _PVRHaveAlphaPremultiplied = YES;
 	
 	glPopGroupMarkerEXT();
 }
+
 @end
-
-
-#pragma mark -
-#pragma mark CCTexture2D - Pixel Format
-
-//
-// Texture options for images that contains alpha
-//
-@implementation CCTexture (PixelFormat)
-+(void) setDefaultAlphaPixelFormat:(CCTexturePixelFormat)format
-{
-	defaultAlphaPixel_format = format;
-}
-
-+(CCTexturePixelFormat) defaultAlphaPixelFormat
-{
-	return defaultAlphaPixel_format;
-}
-
-+(NSUInteger) bitsPerPixelForFormat:(CCTexturePixelFormat)format
-{
-	NSUInteger ret=0;
-	
-	switch (format) {
-		case CCTexturePixelFormat_RGBA8888:
-			ret = 32;
-			break;
-		case CCTexturePixelFormat_RGB888:
-			// It is 32 and not 24, since its internal representation uses 32 bits.
-			ret = 32;
-			break;
-		case CCTexturePixelFormat_RGB565:
-			ret = 16;
-			break;
-		case CCTexturePixelFormat_RGBA4444:
-			ret = 16;
-			break;
-		case CCTexturePixelFormat_RGB5A1:
-			ret = 16;
-			break;
-		case CCTexturePixelFormat_AI88:
-			ret = 16;
-			break;
-		case CCTexturePixelFormat_A8:
-			ret = 8;
-			break;
-		case CCTexturePixelFormat_I8:
-			ret = 8;
-			break;
-		case CCTexturePixelFormat_PVRTC4:
-			ret = 4;
-			break;
-		case CCTexturePixelFormat_PVRTC2:
-			ret = 2;
-			break;
-		default:
-			ret = -1;
-			NSAssert1(NO , @"bitsPerPixelForFormat: %ld, unrecognised pixel format", (long)format);
-			CCLOG(@"bitsPerPixelForFormat: %ld, cannot give useful result", (long)format);
-			break;
-	}
-	return ret;
-}
-
--(NSUInteger) bitsPerPixelForFormat
-{
-	return [[self class] bitsPerPixelForFormat:_format];
-}
-
--(NSString*) stringForFormat
-{
-	
-	switch (_format) {
-		case CCTexturePixelFormat_RGBA8888:
-			return  @"RGBA8888";
-
-		case CCTexturePixelFormat_RGB888:
-			return  @"RGB888";
-
-		case CCTexturePixelFormat_RGB565:
-			return  @"RGB565";
-
-		case CCTexturePixelFormat_RGBA4444:
-			return  @"RGBA4444";
-
-		case CCTexturePixelFormat_RGB5A1:
-			return  @"RGB5A1";
-
-		case CCTexturePixelFormat_AI88:
-			return  @"AI88";
-
-		case CCTexturePixelFormat_A8:
-			return  @"A8";
-
-		case CCTexturePixelFormat_I8:
-			return  @"I8";
-			
-		case CCTexturePixelFormat_PVRTC4:
-			return  @"PVRTC4";
-			
-		case CCTexturePixelFormat_PVRTC2:
-			return  @"PVRTC2";
-
-		default:
-			NSAssert1(NO , @"stringForFormat: %ld, unrecognised pixel format", (long)_format);
-			CCLOG(@"stringForFormat: %ld, cannot give useful result", (long)_format);
-			break;
-	}
-	
-	return  nil;
-}
-@end
-

@@ -366,7 +366,7 @@ SetMat4(NSString *name, GLint location)
 			case GL_SAMPLER_2D: {
 				// Sampler setters are handled a differently since the real work is binding the texture and not setting the uniform value.
 				uniformSetters[name] = ^(CCRenderer *renderer, NSDictionary *shaderUniforms, NSDictionary *globalShaderUniforms){
-					CCTexture *texture = shaderUniforms[name] ?: globalShaderUniforms[name] ?: [CCTexture none];
+					CCTextureGL *texture = shaderUniforms[name] ?: globalShaderUniforms[name] ?: [CCTexture none];
 					NSAssert([texture isKindOfClass:[CCTexture class]], @"Shader uniform '%@' value must be a CCTexture object.", name);
 					
 					// Bind the texture to the texture unit for the uniform.

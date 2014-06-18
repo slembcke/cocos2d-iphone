@@ -169,8 +169,8 @@
 	
 	void *data = calloc(powW*powH, 4);
 
-	CCTexture *texture = [[CCTexture alloc] initWithData:data pixelFormat:_pixelFormat pixelsWide:powW pixelsHigh:powH contentSizeInPixels:CGSizeMake(pixelW, pixelH) contentScale:_contentScale];
-    self.texture = texture;
+	CCTextureGL *texture = [[CCTextureGL alloc] initWithData:data pixelFormat:_pixelFormat pixelsWide:powW pixelsHigh:powH contentSizeInPixels:CGSizeMake(pixelW, pixelH) contentScale:_contentScale];
+	self.texture = texture;
     
 	free(data);
 
