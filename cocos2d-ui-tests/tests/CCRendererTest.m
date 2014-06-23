@@ -645,6 +645,12 @@ ProgressPercent(CCTime t)
 	};
 	[draw drawPolyWithVerts:points2 count:sizeof(points2)/sizeof(*points2) fillColor:[CCColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.75] borderWidth:0.0 borderColor:[CCColor whiteColor]];
 	
+	[draw runAction:[CCActionRepeatForever actionWithAction:[CCActionSequence actions:
+		[CCActionFadeOut actionWithDuration:1.0],
+		[CCActionFadeIn actionWithDuration:1.0],
+		nil
+	]]];
+	
 	[self.contentNode addChild:draw];
 }
 

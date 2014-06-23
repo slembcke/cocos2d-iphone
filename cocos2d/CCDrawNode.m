@@ -33,14 +33,31 @@
 #import "CCNode_Private.h"
 #import "CCColor.h"
 
-
-static NSString *FRAGMENT_SHADER_SOURCE = 
-	@"#ifdef GL_ES\n"
-	@"#extension GL_OES_standard_derivatives : enable\n"
-	@"#endif\n"
-	@"\n"
+static NSString *VERTEX_SHADER_SOURCE =
+	@"uniform highp mat4 u_MVP;\n"
+	@"uniform highp vec4 u_BlendColor;"
 	@"void main(){\n"
-	@"	gl_FragColor = cc_FragColor*smoothstep(0.0, length(fwidth(cc_FragTexCoord1)), 1.0 - length(cc_FragTexCoord1));\n"
+	@"	gl_Position = u_MVP*cc_Position;\n"
+	@"	cc_FragColor = clamp(cc_Color*u_BlendColor, 0.0, 1.0);\n"
+	@"	cc_FragTexCoord1 = cc_TexCoord1;\n"
+	@"	cc_FragTexCoord2 = cc_TexCoord2;\n"
+	@"}\n";
+
+
+static NSString *FRAGMENT_SHADER_SOURCE =
+	@"#ifdef GL_OES_standard_derivatives\n"
+	@"#extension GL_OES_standard_derivatives : enable\n"
+	@"#define has_standard_derivatives 1\n"
+	@"#elif !defined(GL_ES)\n"
+	@"#define has_standard_derivatives 0\n"
+	@"#endif\n"
+	@"void main(){\n"
+	@"	float l = length(cc_FragTexCoord1);\n"
+	@"	#if has_standard_derivatives\n"
+	@"		gl_FragColor = cc_FragColor*smoothstep(0.0, fwidth(l), 1.0 - l);\n"
+	@"	#else\n"
+	@"		gl_FragColor = cc_FragColor*step(l, 1.0);\n"
+	@"	#endif\n"
 	@"}\n";
 
 
@@ -56,7 +73,7 @@ CCShader *SHADER = nil;
 
 +(void)initialize
 {
-	SHADER = [[CCShader alloc] initWithFragmentShaderSource:FRAGMENT_SHADER_SOURCE];
+	SHADER = [[CCShader alloc] initWithVertexShaderSource:VERTEX_SHADER_SOURCE fragmentShaderSource:FRAGMENT_SHADER_SOURCE];
 }
 
 #pragma mark memory
@@ -120,12 +137,15 @@ CCShader *SHADER = nil;
 {
 	if(_elementCount == 0) return;
 	
+	// Perform the vertex transform on the CPU for maximum performance.
+	self.shaderUniforms[@"u_MVP"] = [NSValue valueWithGLKMatrix4:*transform];
+	// Pass the draw node's overall color to tint the vertex colors.
+	self.shaderUniforms[@"u_BlendColor"] = [NSValue valueWithGLKVector4:Premultiply(self.color.glkVector4)];
+	
 	CCRenderBuffer buffer = [renderer enqueueTriangles:_elementCount/3 andVertexes:_vertexCount withState:self.renderState globalSortOrder:0];
 	
-	// TODO Maybe it would be even better to skip the CPU transform and use a uniform matrix?
-	for(int i=0; i<_vertexCount; i++){
-		CCRenderBufferSetVertex(buffer, i, CCVertexApplyTransform(_vertexes[i], transform));
-	}
+	// Copy the vertexes into the buffer.
+	memcpy(buffer.vertexes, _vertexes, _vertexCount*sizeof(CCVertex));
 	
 	for(int i=0; i<_elementCount; i++){
 		buffer.elements[i] = _elements[i] + buffer.startIndex;
