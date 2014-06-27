@@ -90,6 +90,7 @@
 	BOOL			_rotated;
 	CGPoint			_offsetInPixels;
 	CGSize			_originalSizeInPixels;
+	CGFloat _scaleFactor;
 	CCTexture		*_texture;
 	NSString		*_textureFilename;
 	CCProxy __weak *_proxy;
@@ -180,23 +181,24 @@
 
 -(CGRect) rect
 {
-	return CC_RECT_SCALE(_rectInPixels, 1.0/self.texture.contentScale);
+	return CC_RECT_SCALE(_rectInPixels, _scaleFactor);
 }
 
 -(CGPoint)offset
 {
-	return ccpMult(_offsetInPixels, 1.0/self.texture.contentScale);
+	return ccpMult(_offsetInPixels, _scaleFactor);
 }
 
 -(CGSize)originalSize
 {
-	return CC_SIZE_SCALE(_originalSizeInPixels, 1.0/self.texture.contentScale);
+	return CC_SIZE_SCALE(_originalSizeInPixels, _scaleFactor);
 }
 
 -(void) setTexture:(CCTexture *)texture
 {
 	if( _texture != texture ) {
 		_texture = texture;
+		_scaleFactor = texture.rescaleFactor/texture.contentScale;
 	}
 }
 
@@ -205,6 +207,7 @@
 	CCTexture *texture = _lazyTexture;
 	if(!texture && _textureFilename){
 		_lazyTexture = texture = [CCTexture textureWithFile:_textureFilename];
+		_scaleFactor = texture.rescaleFactor/texture.contentScale;
 	}
 	
 	return texture;

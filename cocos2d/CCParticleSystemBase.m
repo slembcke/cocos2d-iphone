@@ -43,6 +43,8 @@
 //  cocos2d uses a another approach, but the results are almost identical.
 //
 
+#import "ImageIO/ImageIO.h"
+
 // opengl
 #import "Platforms/CCGL.h"
 
@@ -50,7 +52,7 @@
 #import "ccConfig.h"
 #import "CCParticleSystemBase.h"
 #import "CCParticleBatchNode.h"
-#import "CCTexture.h"
+#import "CCTexture_Private.h"
 #import "ccMacros.h"
 #import "Support/CCProfiling.h"
 #import "CCNode_Private.h"
@@ -242,13 +244,12 @@
 			// For backward compatibility, only append the dirname if both dirnames are the same
 			if( ! [textureDir isEqualToString:dirname] )
 				textureName = [dirname stringByAppendingPathComponent:textureName];
+			
+			CCTexture *tex = [CCTexture cachedTextureNamed:textureName];
 
-			CCTexture *tex = [CCTexture textureWithFile:textureName];
-
-			if( tex )
-				[self setTexture:tex];
-			else {
-
+			if(tex){
+				self.texture = tex;
+			} else {
 				NSString *textureData = [dictionary valueForKey:@"textureImageData"];
 				NSAssert( textureData, @"CCParticleSystem: Couldn't load texture");
 
@@ -262,17 +263,15 @@
 				free( buffer );
 
 				NSAssert( deflated != NULL, @"CCParticleSystem: error ungzipping textureImageData");
-				NSData *data = [[NSData alloc] initWithBytes:deflated length:deflatedLen];
-
-#ifdef __CC_PLATFORM_IOS
-				UIImage *image = [[UIImage alloc] initWithData:data];
-#elif defined(__CC_PLATFORM_MAC)
-				NSBitmapImageRep *image = [[NSBitmapImageRep alloc] initWithData:data];
-#endif
-
-				free(deflated); deflated = NULL;
-
-				self.texture = [CCTexture textureWithCGImage:image.CGImage name:textureName];
+				NSData *data = [NSData dataWithBytesNoCopy:deflated length:deflatedLen];
+				
+				CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, nil);
+				CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, nil);
+				
+				self.texture = [CCTexture textureWithCGImage:image name:textureName];
+				
+				CGImageRelease(image);
+				CFRelease(source);
 			}
 
 			NSAssert( [self texture] != NULL, @"CCParticleSystem: error loading the texture");

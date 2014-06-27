@@ -40,7 +40,7 @@
 #import "CCLabelBMFont.h"
 #import "CCSprite.h"
 #import "CCConfiguration.h"
-#import "CCTexture.h"
+#import "CCTexture_Private.h"
 #import "Support/CCFileUtils.h"
 #import "Support/CGPointExtension.h"
 #import "Support/uthash.h"
@@ -770,7 +770,8 @@ void FNTConfigRemoveCache( void )
     CGRect rect;
     ccBMFontDef fontDef = (ccBMFontDef){};
 	
-	CGFloat contentScale = 1.0/self.texture.contentScale;
+	CCTexture *tex = self.texture;
+	CGFloat scaleFactor = tex.rescaleFactor/tex.contentScale;
 	
 	for(NSUInteger i = 0; i<stringLen; i++) {
 		unichar c = [_string characterAtIndex:i];
@@ -800,7 +801,7 @@ void FNTConfigRemoveCache( void )
 		
 		fontDef = element->fontDef;
 		
-		rect = CC_RECT_SCALE(fontDef.rect, contentScale);
+		rect = CC_RECT_SCALE(fontDef.rect, scaleFactor);
 		
 		rect.origin.x += _imageOffset.x;
 		rect.origin.y += _imageOffset.y;
@@ -823,7 +824,7 @@ void FNTConfigRemoveCache( void )
 				fontChar = _reusedChar;
 				hasSprite = NO;
 			} else {
-				fontChar = [[CCSprite alloc] initWithTexture:self.texture rect:rect];
+				fontChar = [[CCSprite alloc] initWithTexture:tex rect:rect];
 				[self addChild:fontChar z:i];
 				[self setTag:i forChild:fontChar];
 			}
@@ -840,8 +841,8 @@ void FNTConfigRemoveCache( void )
 		// See issue 1343. cast( signed short + unsigned integer ) == unsigned integer (sign is lost!)
 		NSInteger yOffset = _configuration->_commonHeight - fontDef.yOffset;
 		CGPoint fontPos = ccp( (CGFloat)nextFontPositionX + fontDef.xOffset + fontDef.rect.size.width*0.5f + kerningAmount,
-							  (CGFloat)nextFontPositionY + yOffset - rect.size.height*0.5f * self.texture.contentScale );
-		fontChar.position = ccpMult(fontPos, contentScale);
+							  (CGFloat)nextFontPositionY + yOffset - rect.size.height*0.5f * scaleFactor);
+		fontChar.position = ccpMult(fontPos, scaleFactor);
 		
 		// update kerning
 		nextFontPositionX += fontDef.xAdvance + kerningAmount;
@@ -862,7 +863,7 @@ void FNTConfigRemoveCache( void )
     }
     tmpSize.height = totalHeight;
     
-	[self setContentSize:CC_SIZE_SCALE(tmpSize, contentScale)];
+	[self setContentSize:CC_SIZE_SCALE(tmpSize, scaleFactor)];
 }
 
 #pragma mark LabelBMFont - CCLabelProtocol protocol

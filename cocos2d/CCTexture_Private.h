@@ -47,15 +47,31 @@
 @end
 
 
+typedef CCTexture *(^CCTextureLoaderBlock)(CCTextureInfo *info);
+
+
+@interface CCTextureInfo(Private)
+
+-(instancetype)initWithKey:(id)key loader:(CCTextureLoaderBlock)loader;
+
+@end
+
+
 @interface CCTexture ()
 
 /// Remove all textures from the cache.
 +(void)resetTextureCache;
 
+/// Return a cached texture only if it has already been loaded.
++(id)cachedTextureNamed:(NSString *)name;
+
 /* texture max S */
 @property(nonatomic,readwrite) GLfloat maxS;
 /* texture max T */
 @property(nonatomic,readwrite) GLfloat maxT;
+
+/// Amount the texture was rescaled by when loading.
+@property(nonatomic, assign) CGFloat rescaleFactor;
 
 /* Initializes a texture from a PVR file.
  

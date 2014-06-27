@@ -223,7 +223,7 @@ ConvertToPixelFormat(NSMutableData *pixelData, CCTexturePixelFormat pixelFormat,
 	return converted;
 }
 
--(instancetype)initWithCGImage:(CGImageRef)image
+-(instancetype)initWithCGImage:(CGImageRef)image rescaleFactor:(CGFloat)rescaleFactor
 {
 	NSAssert(image, @"Image is NULL.");
 
@@ -259,8 +259,8 @@ ConvertToPixelFormat(NSMutableData *pixelData, CCTexturePixelFormat pixelFormat,
 		pixelFormat = CCTexturePixelFormat_A8;
 	}
 
-	NSUInteger pixelWidth = CGImageGetWidth(image);
-	NSUInteger pixelHeight = CGImageGetHeight(image);
+	NSUInteger pixelWidth = ceil(CGImageGetWidth(image)*rescaleFactor);
+	NSUInteger pixelHeight = ceil(CGImageGetHeight(image)*rescaleFactor);
 	
 	NSUInteger maxTextureSize = [CCConfiguration sharedConfiguration].maxTextureSize;
 	if(pixelWidth > maxTextureSize || pixelHeight > maxTextureSize ) {
@@ -295,8 +295,7 @@ ConvertToPixelFormat(NSMutableData *pixelData, CCTexturePixelFormat pixelFormat,
 	CGColorSpaceRelease(colorSpace);
 	
 	CGContextClearRect(context, CGRectMake(0, 0, pixelWidth, pixelHeight));
-	CGContextTranslateCTM(context, 0, pixelHeight);
-	CGContextScaleCTM(context, 1.0, -1.0);
+	CGContextConcatCTM(context, CGAffineTransformMake(1, 0, 0, -1, 0, pixelHeight));
 	CGContextDrawImage(context, CGRectMake(0, 0, pixelWidth, pixelHeight), image);
 	CGContextRelease(context);
 	
@@ -320,8 +319,6 @@ ConvertToPixelFormat(NSMutableData *pixelData, CCTexturePixelFormat pixelFormat,
 
 @end
 
-
-typedef CCTexture *(^CCTextureLoaderBlock)(CCTextureInfo *info);
 
 @implementation CCTextureInfo {
 	CCTextureLoaderBlock _loader;
@@ -359,6 +356,9 @@ typedef CCTexture *(^CCTextureLoaderBlock)(CCTextureInfo *info);
 	NSString *fullpath = [fileUtils fullPathForFilename:path contentScale:&contentScale];
 	NSAssert(fullpath, @"Could not find file %@", path);
 	
+	CGFloat rescaleFactor = 1.0;
+	contentScale *= rescaleFactor;
+	
 	CCTextureInfo *obj = [[self alloc] initWithKey:name loader:^(CCTextureInfo *info){
 		NSString *lowerCase = [fullpath lowercaseString];
 		
@@ -372,7 +372,7 @@ typedef CCTexture *(^CCTextureLoaderBlock)(CCTextureInfo *info);
 			CGImageRef image = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
 			NSAssert(image, @"Could not load image for %@", path);
 			
-			CCBitmap *bitmap = [[CCBitmap alloc] initWithCGImage:image];
+			CCBitmap *bitmap = [[CCBitmap alloc] initWithCGImage:image rescaleFactor:rescaleFactor];
 			NSAssert(bitmap, @"Could not load bitmap from image %@", path);
 			
 			CGImageRelease(image);
@@ -381,7 +381,7 @@ typedef CCTexture *(^CCTextureLoaderBlock)(CCTextureInfo *info);
 			CCTexture *texture = [[CCTextureGL alloc] initWithBitmap:bitmap info:info];
 			NSAssert(texture, @"Could not create texture for %@", path);
 			
-			CCLOGINFO(@"Texture loaded: %@", path);
+			texture.rescaleFactor = rescaleFactor;
 			return texture;
 		}
 	}];
@@ -397,7 +397,7 @@ typedef CCTexture *(^CCTextureLoaderBlock)(CCTextureInfo *info);
 	
 	// IMPORTANT: The bridged reference retains the CGImageRef for the block.
 	CCTextureInfo *obj = [[self alloc] initWithKey:(__bridge id)image loader:^(CCTextureInfo *info){
-		CCBitmap *bitmap = [[CCBitmap alloc] initWithCGImage:image];
+		CCBitmap *bitmap = [[CCBitmap alloc] initWithCGImage:image rescaleFactor:1.0];
 		NSAssert(bitmap, @"Could not create bitmap from CGImage.");
 		
 		return [[CCTexture alloc] initWithBitmap:bitmap info:info];
@@ -602,6 +602,11 @@ static CCTextureCache *CC_TEXTURE_CACHE;
 	return texture;
 }
 
++(id)cachedTextureNamed:(NSString *)name
+{
+	return [CC_TEXTURE_CACHE rawObjectForKey:name];
+}
+
 -(instancetype)initWithBitmap:(CCBitmap *)bitmap info:(CCTextureInfo *)info
 {
 	return [[CCTextureGL alloc] initWithBitmap:bitmap info:info];
@@ -627,7 +632,7 @@ static CCTextureCache *CC_TEXTURE_CACHE;
 	CCTextureInfo *info = [[CCTextureInfo alloc] init];
 	info.contentScale = contentScale;
 	
-	return [[CCTextureGL alloc] initWithBitmap:[[CCBitmap alloc] initWithCGImage:image] info:info];
+	return [[CCTextureGL alloc] initWithBitmap:[[CCBitmap alloc] initWithCGImage:image rescaleFactor:1.0] info:info];
 }
 
 -(id)initWithPVRFile:(NSString *)file
@@ -653,7 +658,8 @@ static CCTextureCache *CC_TEXTURE_CACHE;
 
 -(CCSpriteFrame*) createSpriteFrame
 {
-	CGRect rectInPixels = {CGPointZero, _sizeInPixels};
+	// Original unscaled pixel size.
+	CGRect rectInPixels = {CGPointZero, CC_SIZE_SCALE(_sizeInPixels, 1.0/_rescaleFactor)};
 	return [CCSpriteFrame frameWithTexture:self rectInPixels:rectInPixels rotated:NO offset:CGPointZero originalSize:_sizeInPixels];
 }
 
@@ -738,23 +744,21 @@ static CCTextureGL *CC_TEXTURE_GL_NONE = nil;
 		glGenTextures(1, &_name);
 		glBindTexture(GL_TEXTURE_2D, _name);
 		
+		GLenum wrapModes[] = {GL_CLAMP_TO_EDGE, GL_REPEAT, GL_MIRRORED_REPEAT};
 		GLenum minModes[] = {GL_NEAREST, GL_LINEAR};
 		GLenum magModes[] = {
-			GL_NEAREST, GL_LINEAR,
-			GL_NEAREST_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_NEAREST,
-			GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR_MIPMAP_LINEAR
+			GL_NEAREST, GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST_MIPMAP_LINEAR,
+			GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_LINEAR,
 		};
-		GLenum wrapModes[] = {GL_CLAMP_TO_EDGE, GL_REPEAT, GL_MIRRORED_REPEAT};
 		
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minModes[info.filterModeMin]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magModes[info.filterModeMag + 2*info.filterModeMip]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapModes[info.wrapModeX]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapModes[info.wrapModeY]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minModes[info.filterModeMin]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magModes[3*info.filterModeMag + info.filterModeMip]);
 
 		// Specify OpenGL texture image
 
-		switch(pixelFormat)
-		{
+		switch(pixelFormat){
 			case CCTexturePixelFormat_RGBA8888:
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelData);
 				break;
@@ -789,6 +793,7 @@ static CCTextureGL *CC_TEXTURE_GL_NONE = nil;
 		_maxS = _sizeInPixels.width / (float)width;
 		_maxT = _sizeInPixels.height / (float)height;
 		_contentScale = info.contentScale;
+		self.rescaleFactor = 1.0;
 		
 		_premultipliedAlpha = NO;
 		_hasMipmaps = NO;
