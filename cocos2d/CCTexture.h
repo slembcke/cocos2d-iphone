@@ -93,42 +93,33 @@ typedef NS_ENUM(NSUInteger, CCTextureInfoFilterMode){
 	
 	/// Linear interpolation. Sometimes referred to as bilinear or anti-aliased mode.
 	CCTextureInfoFilterModeLinear,
-	
-	/// Use the nearest mipmap and nearest pixel.
-	/// Only valid as a minification mode.
-	CCTextureInfoFilterModeNearestMipmapNearest,
-	
-	/// Linearly interpolate between pixels in the nearest mipmap level.
-	/// Only valid as a minification mode.
-	CCTextureInfoFilterModeLinearMipmapNearest,
-	
-	/// Use nearest neighbor interpolation but linearly interpolate between mipmap levels.
-	/// Only valid as a minification mode.
-	CCTextureInfoFilterModeNearestMipmapLinear,
-	
-	/// The highest quality (and slowest) filtering mode. Sometimes referred to as tri-linear.
-	CCTextureInfoFilterModeLinearMipmapLinear,
 };
 
 
-typedef CCTexture *(^CCTextureLoaderBlock)();
+/// Mip mapping uses multiple resolutions for a texture and picks the correct one based on the size of the texture onscreen.
+/// The mipmap mode filtering defines how the GPU mixes pixels from the different mip map resolutions.
+typedef NS_ENUM(NSUInteger, CCTextureInfoFilterModeMip){
+	/// Disable mip mapping.
+	CCTextureInfoFilterModeMipNone,
+	
+	/// Pick the closest mipmap resolution.
+	CCTextureInfoFilterModeMipNearest,
+	
+	/// Linear interpolation between the two nearest mipmap resolutions for smoother scaling.
+	/// In conjuction with CCTextureInfoFilterModeLinear is sometimes referred to as trilinear filtering.
+	CCTextureInfoFilterModeMipLinear,
+};
 
 
 @interface CCTextureInfo : NSObject <NSCopying>
 
--(instancetype)initWithKey:(id)key loader:(CCTextureLoaderBlock)loader;
-
 +(instancetype)infoWithTextureNamed:(NSString *)name;
-+(instancetype)infoWithImage:(CGImageRef)image;
++(instancetype)infoWithImage:(CGImageRef)image contentScale:(CGFloat)contentScale;
 
 /// Object reference used for checking equality for this texture info object.
 @property(nonatomic, strong, readonly) id key;
 
-/// Block that is invoked to load the texture for this info.
-@property(nonatomic, strong, readonly) CCTextureLoaderBlock loader;
-
 /// Content scale of the texture (pixels per point).
-/// A content scale of 0.0 means that the content scale will be calculated automatically. This is the default.
 @property(nonatomic, assign) CGFloat contentScale;
 
 /// Wrapping mode of the texture on the x-axis.
@@ -149,6 +140,10 @@ typedef CCTexture *(^CCTextureLoaderBlock)();
 /// Texture filtering mode of the texture when scaling it up.
 /// Defaults to CCTextureInfoFilterModeLinear.
 @property(nonatomic, assign) CCTextureInfoFilterMode filterModeMag;
+
+/// Filtering mode for mip map levels.
+/// Defaults to CCTextureInfoFilterModeMipNearest.
+@property(nonatomic, assign) CCTextureInfoFilterModeMip filterModeMip;
 
 /// Convenience property for combined min/mag filter mode.
 @property(nonatomic, assign) CCTextureInfoFilterMode filterMode;

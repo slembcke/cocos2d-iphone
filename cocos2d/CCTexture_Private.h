@@ -27,6 +27,26 @@
 
 // -------------------------------------------------------------
 
+@interface CCBitmap : NSObject
+
+-(instancetype)initWithData:(NSData *)pixelData pixelFormat:(CCTexturePixelFormat)pixelFormat
+	width:(NSUInteger)width height:(NSUInteger)height
+	contentWidth:(NSUInteger)contentWidth contentHeight:(NSUInteger)contentHeight;
+
+@property(nonatomic, readonly) NSUInteger width;
+@property(nonatomic, readonly) NSUInteger height;
+
+@property(nonatomic, readonly) NSUInteger contentWidth;
+@property(nonatomic, readonly) NSUInteger contentHeight;
+
+@property(nonatomic, readonly) CCTexturePixelFormat pixelFormat;
+@property(nonatomic, readonly) NSData *pixelData;
+
+@property(nonatomic, assign) BOOL premultipliedAlpha;
+
+@end
+
+
 @interface CCTexture ()
 
 /// Remove all textures from the cache.
@@ -37,13 +57,6 @@
 /* texture max T */
 @property(nonatomic,readwrite) GLfloat maxT;
 
-@end
-
-/*
- Extensions to make it easy to create a CCTexture2D object from a PVRTC file
- Note that the generated textures don't have their alpha premultiplied - use the blending mode (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA).
- */
-@interface CCTexture (PVRSupport)
 /* Initializes a texture from a PVR file.
  
  Supported PVR formats:
@@ -65,6 +78,9 @@
  
  */
 -(id) initWithPVRFile: (NSString*) file;
+
+/// Create a texture from a bitmap a texture info object.
+-(instancetype)initWithBitmap:(CCBitmap *)bitmap info:(CCTextureInfo *)info;
 
 /* treats (or not) PVR files as if they have alpha premultiplied.
  Since it is impossible to know at runtime if the PVR images have the alpha channel premultiplied, it is
@@ -98,7 +114,7 @@ typedef struct _ccTexParams {
  @warning Calling this method could allocate additional texture memory.
  
  */
--(void) setTexParameters: (ccTexParams*) texParams __deprecated;
+-(void) setTexParameters: (ccTexParams*) texParams;
 
 
 /* sets antialias texture parameters:
@@ -108,7 +124,7 @@ typedef struct _ccTexParams {
  @warning Calling this method could allocate additional texture memory.
  
  */
-- (void) setAntiAliasTexParameters __deprecated;
+- (void) setAntiAliasTexParameters;
 
 /* sets alias texture parameters:
  - GL_TEXTURE_MIN_FILTER = GL_NEAREST
@@ -117,12 +133,12 @@ typedef struct _ccTexParams {
  @warning Calling this method could allocate additional texture memory.
  
  */
-- (void) setAliasTexParameters __deprecated;
+- (void) setAliasTexParameters;
 
 
 /* Generates mipmap images for the texture.
  It only works if the texture size is POT (power of 2).
  */
--(void) generateMipmap __deprecated;
+-(void) generateMipmap;
 
 @end

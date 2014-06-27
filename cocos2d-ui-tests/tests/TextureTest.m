@@ -162,6 +162,8 @@
 
 -(void) setupTestTextureAntialiasModesTest
 {
+	self.subTitle = @"Nearest filtering on the left, linear on the right.";
+	
 	{
 		CCTextureInfo *info = [CCTextureInfo infoWithTextureNamed:@"powered.png"];
 		info.filterMode = CCTextureInfoFilterModeNearest;
@@ -185,7 +187,7 @@
 
 -(void) setupGLRepeatTest
 {
-	self.subTitle = @"Texture GL_REPEAT";
+	self.subTitle = @"Repeating textures";
 	
 	CGSize s = [[CCDirector sharedDirector] viewSize];
 	
