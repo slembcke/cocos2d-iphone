@@ -200,5 +200,24 @@
 	[self.contentNode addChild:img];
 }
 
+-(void)setupAutoRescaleTest
+{
+	self.subTitle = @"Image should be rescaled.";
+	
+	CCSprite *sprite = [CCSprite spriteWithImageNamed:@"test_image_scaled.png"];
+	sprite.positionType = CCPositionTypeNormalized;
+	sprite.position = ccp(0.5, 0.5);
+	sprite.scale = 2.0;
+	[self.contentNode addChild:sprite];
+	
+	CCTexture *texture = sprite.texture;
+	NSString *info = texture.description;
+	
+	CCLabelTTF *label = [CCLabelTTF labelWithString:info fontName:nil fontSize:12];
+	label.positionType = CCPositionTypeNormalized;
+	label.position = ccp(0.5, 0.2);
+	[self.contentNode addChild:label];
+}
+
 
 @end

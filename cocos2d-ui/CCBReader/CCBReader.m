@@ -82,6 +82,7 @@
      @"resources-phonehd", CCFileUtilsSuffixiPhoneHD,
      @"resources-phone", CCFileUtilsSuffixiPhone5,
      @"resources-phonehd", CCFileUtilsSuffixiPhone5HD,
+     @"resources-auto", CCFileUtilsSuffixAuto,
      @"", CCFileUtilsSuffixDefault,
      nil];
     

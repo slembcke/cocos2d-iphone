@@ -41,6 +41,7 @@ NSString* const CCSetupAnimationInterval = @"CCSetupAnimationInterval";
 NSString* const CCSetupFixedUpdateInterval = @"CCSetupFixedUpdateInterval";
 NSString* const CCSetupShowDebugStats = @"CCSetupShowDebugStats";
 NSString* const CCSetupTabletScale2X = @"CCSetupTabletScale2X";
+NSString* const CCSetupAutoContentScaleFactor = @"CCSetupAutoContentScaleFactor";
 
 NSString* const CCSetupDepthFormat = @"CCSetupDepthFormat";
 NSString* const CCSetupPreserveBackbuffer = @"CCSetupPreserveBackbuffer";
@@ -242,6 +243,9 @@ FindPOTScale(CGFloat size, CGFloat fixedSize)
 		
 		[director setProjection:CCDirectorProjection2D];
 	}
+	
+	CGFloat autoContentScaleFactor = [config[CCSetupAutoContentScaleFactor] ?: @(4.0) doubleValue];
+	[[CCFileUtils sharedFileUtils] setAutoContentScaleFactor:autoContentScaleFactor RescaleFactor:director.contentScaleFactor/autoContentScaleFactor];
 	
 	// Default texture format for PNG/BMP/TIFF/JPEG/GIF images
 	// It can be RGBA8888, RGBA4444, RGB5_A1, RGB565

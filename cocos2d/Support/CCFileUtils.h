@@ -38,6 +38,7 @@ extern NSString const *CCFileUtilsSuffixiPhone5;
 extern NSString const *CCFileUtilsSuffixiPhone5HD;
 extern NSString const *CCFileUtilsSuffixMac;
 extern NSString const *CCFileUtilsSuffixMacHD;
+extern NSString const *CCFileUtilsSuffixAuto;
 
 extern NSString const *kCCFileUtilsDefaultSearchPath;
 
@@ -219,6 +220,16 @@ typedef NS_ENUM(NSUInteger, CCFileUtilsSearchMode) {
 -(void)setMacContentScaleFactor:(CGFloat)scale;
 
 #endif // __CC_PLATFORM_IOS
+
+
+/// Set the suffix for automatically rescaled assets.
+-(void)setAutoSuffix:(NSString *)suffix;
+
+/// Set the scaling factor to apply to automatically rescaled assets.
+-(void)setAutoContentScaleFactor:(CGFloat)scale RescaleFactor:(CGFloat)rescale;
+
+/// Returns the auto-rescaling factor for "-auto" files, otherwhise returns 1.0.
+-(CGFloat)rescaleFactorForFilename:(NSString *)filename;
 
 
 /** returns the shared file utils instance */

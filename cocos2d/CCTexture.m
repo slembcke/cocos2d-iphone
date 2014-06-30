@@ -355,10 +355,7 @@ ConvertToPixelFormat(NSMutableData *pixelData, CCTexturePixelFormat pixelFormat,
 	NSString *path = [fileUtils standarizePath:name];
 	NSString *fullpath = [fileUtils fullPathForFilename:path contentScale:&contentScale];
 	NSAssert(fullpath, @"Could not find file %@", path);
-	
-	CGFloat rescaleFactor = 1.0;
-	contentScale *= rescaleFactor;
-	
+		
 	CCTextureInfo *obj = [[self alloc] initWithKey:name loader:^(CCTextureInfo *info){
 		NSString *lowerCase = [fullpath lowercaseString];
 		
@@ -372,6 +369,7 @@ ConvertToPixelFormat(NSMutableData *pixelData, CCTexturePixelFormat pixelFormat,
 			CGImageRef image = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
 			NSAssert(image, @"Could not load image for %@", path);
 			
+			CGFloat rescaleFactor = [fileUtils rescaleFactorForFilename:path];
 			CCBitmap *bitmap = [[CCBitmap alloc] initWithCGImage:image rescaleFactor:rescaleFactor];
 			NSAssert(bitmap, @"Could not load bitmap from image %@", path);
 			

@@ -41,6 +41,7 @@ NSString *CCFileUtilsSuffixiPhone5 = @"iphone5";
 NSString *CCFileUtilsSuffixiPhone5HD = @"iphone5hd";
 NSString *CCFileUtilsSuffixMac = @"mac";
 NSString *CCFileUtilsSuffixMacHD = @"machd";
+NSString *CCFileUtilsSuffixAuto = @"auto";
 
 NSString *kCCFileUtilsDefaultSearchPath = @"";
 
@@ -80,15 +81,17 @@ NSInteger ccLoadFileIntoMemory(const char *filename, unsigned char **out)
 @interface CCCacheValue : NSObject
 @property (nonatomic, readwrite, strong) NSString *fullpath;
 @property (nonatomic, readwrite ) CGFloat contentScale;
+@property (nonatomic, readwrite ) BOOL autoScale;
 @end
 
 @implementation CCCacheValue
--(id) initWithFullPath:(NSString*)path contentScale:(CGFloat)contentScale;
+-(id) initWithFullPath:(NSString*)path contentScale:(CGFloat)contentScale autoScale:(BOOL)autoScale
 {
 	if( (self=[super init]) )
 	{
 		self.fullpath = path;
 		self.contentScale = contentScale;
+		self.autoScale = autoScale;
 	}
 	
 	return self;
@@ -109,6 +112,9 @@ NSInteger ccLoadFileIntoMemory(const char *filename, unsigned char **out)
 	CGFloat _iPhoneContentScaleFactor;
 	CGFloat _iPadContentScaleFactor;
 	CGFloat _macContentScaleFactor;
+	
+	CGFloat _autoContentScaleFactor;
+	CGFloat _autoRescaleFactor;
 }
 
 @synthesize fileManager=_fileManager, bundle=_bundle;
@@ -163,6 +169,7 @@ static CCFileUtils *fileUtils = nil;
 						 @"-hd", CCFileUtilsSuffixiPhoneHD,
 						 @"-iphone5", CCFileUtilsSuffixiPhone5,
 						 @"-iphone5hd", CCFileUtilsSuffixiPhone5HD,
+						 @"-auto", CCFileUtilsSuffixAuto,
 						 @"", CCFileUtilsSuffixDefault,
 						 nil];
 
@@ -173,6 +180,7 @@ static CCFileUtils *fileUtils = nil;
 							@"resources-iphonehd", CCFileUtilsSuffixiPhoneHD,
 							@"resources-iphone5", CCFileUtilsSuffixiPhone5,
 							@"resources-iphone5hd", CCFileUtilsSuffixiPhone5HD,
+							@"resources-auto", CCFileUtilsSuffixAuto,
 							@"", CCFileUtilsSuffixDefault,
 							nil];
 
@@ -180,12 +188,14 @@ static CCFileUtils *fileUtils = nil;
 		_suffixesDict = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
 						 @"", CCFileUtilsSuffixMac,
 						 @"-machd", CCFileUtilsSuffixMacHD,
+						 @"-auto", CCFileUtilsSuffixAuto,
 						 @"", CCFileUtilsSuffixDefault,
 						 nil];
 		
 		_directoriesDict = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
 							@"resources-mac", CCFileUtilsSuffixMac,
 							@"resources-machd", CCFileUtilsSuffixMacHD,
+							@"resources-auto", CCFileUtilsSuffixAuto,
 							@"", CCFileUtilsSuffixDefault,
 							nil];
 
@@ -194,6 +204,9 @@ static CCFileUtils *fileUtils = nil;
 		_iPhoneContentScaleFactor = 1.0;
 		_iPadContentScaleFactor = 1.0;
 		_macContentScaleFactor = 1.0;
+		
+		_autoContentScaleFactor = 1.0;
+		_autoRescaleFactor = 1.0;
 
 		_searchMode = CCFileUtilsSearchModeSuffix;
 		
@@ -269,6 +282,7 @@ static CCFileUtils *fileUtils = nil;
 	}
 #endif	
 	
+	[_searchResolutionsOrder addObject:CCFileUtilsSuffixAuto];
 	[_searchResolutionsOrder addObject:CCFileUtilsSuffixDefault];
 }
 
@@ -380,6 +394,11 @@ static CCFileUtils *fileUtils = nil;
 
 -(CGFloat) contentScaleForKey:(NSString*)k inDictionary:(NSDictionary *)dictionary
 {
+	// Ooof. This method. I have to stare at it a while each time.
+	// It performs a value -> key lookup in a dictionary.
+	// The 'k' argument is actually a dictionary value, and this loop finds the key associated with it.
+	// The 'dictionary' argument is either the suffix or directory lookup dictionary.
+	
 	// XXX XXX Super Slow
 	for( NSString *key in dictionary) {
 		NSString *value = [dictionary objectForKey:key];
@@ -409,6 +428,8 @@ static CCFileUtils *fileUtils = nil;
 			if( [key isEqualToString:CCFileUtilsSuffixDefault] )
 				return 1.0;
 #endif // __CC_PLATFORM_MAC
+			if( [key isEqualToString:CCFileUtilsSuffixAuto] )
+				return _autoContentScaleFactor;
 		}
 	}
 //	NSAssert(NO, @"Should not reach here");
@@ -476,76 +497,62 @@ static CCFileUtils *fileUtils = nil;
 
 -(NSString*) fullPathForFilename:(NSString*)filename contentScale:(CGFloat *)contentScale
 {
-	CGFloat _contentScale = 1.0;
-	if(!contentScale) contentScale = &_contentScale;
+	CCCacheValue *value = [self cacheValueForFilename:filename];
 	
-	// fullpath? return it
-//	if ([filename isAbsolutePath]) {
-//		CCLOGWARN(@"cocos2d: WARNING fullPathForFilename:resolutionType: should not be called with absolute path. Instead call fullPathForFilenameIgnoringResolutions:");
-//		*contentScale = 1.0;
-//		NSLog(@"filename:%@, fullPath:%@, contentScale:%f", filename, filename, *contentScale);
-//		return filename;
-//	}
+	if(contentScale) *contentScale = value.contentScale;
+	return value.fullpath;
+}
 
-	// Already Cached ?
+-(CCCacheValue *)cacheValueForFilename:(NSString*)filename
+{
 	CCCacheValue *value = [_fullPathCache objectForKey:filename];
-	if( value ) {
-		*contentScale = value.contentScale;
-		return value.fullpath;
-	}
-
-	// in Lookup Filename dictionary ?
-	NSString *newfilename = [_filenameLookup objectForKey:filename];
-	if( ! newfilename )
-		newfilename = filename;
-
-	BOOL found = NO;
-	NSString *ret = @"";
 	
-	for( NSString *path in _searchPath ) {
-		
-		// Search with Suffixes
-		for( NSString *device in _searchResolutionsOrder ) {
+	if(value == nil){
+		// in Lookup Filename dictionary ?
+		NSString *alias = [_filenameLookup objectForKey:filename] ?: filename;
 
-			NSString *fileWithPath = [path stringByAppendingPathComponent:newfilename];
-			
-			if( _searchMode == CCFileUtilsSearchModeSuffix ) {
-				// Search using suffixes
-				NSString *suffix = [_suffixesDict objectForKey:device];
-				ret = [self getPathForFilename:fileWithPath withSuffix:suffix];
-				*contentScale = [self contentScaleForKey:suffix inDictionary:_suffixesDict];
-			} else {
-				// Search in subdirectories
-				NSString *directory = [_directoriesDict objectForKey:device];
-				ret = [self getPathForFilename:newfilename withResourceDirectory:directory withSearchPath:path];
-				*contentScale = [self contentScaleForKey:directory inDictionary:_directoriesDict];
+		NSString *fullPath = nil;
+		CGFloat contentScale = 1.0;
+		BOOL autoScale = NO;
+		
+		for( NSString *path in _searchPath){
+			// Search with Suffixes
+			for(NSString *device in _searchResolutionsOrder){
+				NSString *fileWithPath = [path stringByAppendingPathComponent:alias];
+				
+				if(_searchMode == CCFileUtilsSearchModeSuffix){
+					// Search using suffixes
+					NSString *suffix = [_suffixesDict objectForKey:device];
+					fullPath = [self getPathForFilename:fileWithPath withSuffix:suffix];
+					contentScale = [self contentScaleForKey:suffix inDictionary:_suffixesDict];
+				} else {
+					// Search in subdirectories
+					NSString *directory = [_directoriesDict objectForKey:device];
+					fullPath = [self getPathForFilename:alias withResourceDirectory:directory withSearchPath:path];
+					contentScale = [self contentScaleForKey:directory inDictionary:_directoriesDict];
+				}
+				
+				autoScale = [device isEqualToString:CCFileUtilsSuffixAuto];
+				
+				if(fullPath) break;
 			}
 			
-			if( ret ) {
-				found = YES;
-				break;
-			}
+			// there are 2 loops
+			if(fullPath) break;
 		}
 		
-		// there are 2 loops
-		if(found)
-			break;
-	}
+		NSAssert(fullPath, @"File not found: %@", filename);
 
-	if( found ) {
-		value = [[CCCacheValue alloc] initWithFullPath:ret contentScale:*contentScale];
+		value = [[CCCacheValue alloc] initWithFullPath:fullPath contentScale:contentScale autoScale:autoScale];
 		[_fullPathCache setObject:value forKey:filename];
 	}
-	else
-	{
-    // TODO: NSAssert here instead? Seems like whatever happens next will fail because of this.
-    // Better to stop now rather than later.
-		CCLOGWARN(@"cocos2d: Warning: File not found: %@", filename);
-		ret = nil;
-	}
 	
-	
-	return ret;
+	return value;
+}
+
+-(CGFloat)rescaleFactorForFilename:(NSString *)filename
+{
+	return ([self cacheValueForFilename:filename].autoScale ? _autoRescaleFactor : 1.0);
 }
 
 -(NSString*) fullPathFromRelativePath:(NSString*)relPath contentScale:(CGFloat *)contentScale
@@ -632,6 +639,17 @@ static CCFileUtils *fileUtils = nil;
 -(void)setiPadContentScaleFactor:(CGFloat)scale
 {
 	_iPadContentScaleFactor = scale;
+}
+
+-(void)setAutoSuffix:(NSString *)suffix
+{
+	[_suffixesDict setObject:suffix forKey:CCFileUtilsSuffixAuto];
+}
+
+-(void)setAutoContentScaleFactor:(CGFloat)scale RescaleFactor:(CGFloat)rescale;
+{
+	_autoContentScaleFactor = scale*rescale;
+	_autoRescaleFactor = rescale;
 }
 
 #elif defined(__CC_PLATFORM_MAC)
