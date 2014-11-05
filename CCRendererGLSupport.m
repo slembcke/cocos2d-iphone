@@ -116,7 +116,7 @@ static const CCGraphicsBufferType CCGraphicsBufferGLTypes[] = {
 -(void)setup
 {
 	glBindBuffer(_type, _buffer);
-	glBufferData(_type, _capacity*_elementSize, NULL, GL_STREAM_DRAW);
+	glBufferData(_type, _capacity*_elementSize, NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(_type, 0);
 	CC_CHECK_GL_ERROR_DEBUG();
 }
@@ -146,7 +146,7 @@ static const CCGraphicsBufferType CCGraphicsBufferGLTypes[] = {
 	
 	// Copy that into a new GL buffer.
 	_unmapBuffer(_type);
-	glBufferData(_type, newLength, tempBufferPtr, GL_STREAM_DRAW);
+	glBufferData(_type, newLength, tempBufferPtr, GL_DYNAMIC_DRAW);
 	void *newBufferPtr = _mapBufferRange(_type, 0, newLength, BUFFER_ACCESS_WRITE);
 	
 	// Cleanup.
