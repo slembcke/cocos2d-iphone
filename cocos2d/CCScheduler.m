@@ -44,6 +44,7 @@
 @interface CCScheduledTarget : NSObject
 
 @property(nonatomic, readonly) NSObject<CCSchedulerTarget> *target;
+@property(nonatomic, readonly) NSInteger priority;
 
 @property(nonatomic, strong) CCTimer *timers;
 @property(nonatomic, readonly) BOOL empty;
@@ -84,7 +85,7 @@
 static void
 InvokeMethods(NSArray *methods, SEL selector, CCTime dt)
 {
-	for(CCScheduledTarget *scheduledTarget in [methods copy]){
+	for(CCScheduledTarget *scheduledTarget in methods){
 		typedef void (*Func)(id, SEL, CCTime);
 		if(!scheduledTarget->_paused) ((Func)objc_msgSend)(scheduledTarget->_target, selector, dt);
 	}
@@ -94,6 +95,7 @@ InvokeMethods(NSArray *methods, SEL selector, CCTime dt)
 {
 	if((self = [super init])){
 		_target = target;
+		_priority = target.priority;
 	}
 	
 	return self;
@@ -246,8 +248,8 @@ static CCTimerBlock INVALIDATED_BLOCK = ^(CCTimer *timer){};
 	CFBinaryHeapRef _heap;
 	CFMutableDictionaryRef _scheduledTargets;
 	
-	NSMutableArray *_updates;
-	NSMutableArray *_fixedUpdates;
+	NSMutableArray *_updates, *_fixedUpdates;
+	BOOL _updatesLocked, _fixedUpdatesLocked;
 	
 	CCTimer *_fixedUpdateTimer;
 }
@@ -255,8 +257,8 @@ static CCTimerBlock INVALIDATED_BLOCK = ^(CCTimer *timer){};
 static CFComparisonResult
 ComparePriorities(const void *a, const void *b)
 {
-	NSInteger priority_a = [(__bridge CCTimer *)a scheduledTarget].target.priority;
-	NSInteger priority_b = [(__bridge CCTimer *)b scheduledTarget].target.priority;
+	NSInteger priority_a = [(__bridge CCTimer *)a scheduledTarget].priority;
+	NSInteger priority_b = [(__bridge CCTimer *)b scheduledTarget].priority;
 	
 	if(priority_a < priority_b){
 		return kCFCompareLessThan;
@@ -307,15 +309,16 @@ CompareTimers(const void *a, const void *b, void *context)
 		_updates = [NSMutableArray array];
 		_fixedUpdates = [NSMutableArray array];
 		
-		// Annoyance to avoid a retain cycle.
-        __weak __typeof(self) _self = self;
-		
 		// Schedule a timer to run the fixedUpdate: methods.
 		_fixedUpdateTimer = [self scheduleBlock:^(CCTimer *timer){
 			if(timer.invokeTime > 0.0){
-				CCScheduler *sceduler = _self;
-				InvokeMethods(sceduler->_fixedUpdates, @selector(fixedUpdate:), timer.repeatInterval);
-				sceduler->_lastFixedUpdateTime = timer.invokeTime;
+				CCScheduler *scheduler = timer.scheduler;
+				
+				scheduler->_fixedUpdatesLocked = YES;
+				InvokeMethods(scheduler->_fixedUpdates, @selector(fixedUpdate:), timer.repeatInterval);
+				scheduler->_fixedUpdatesLocked = NO;
+				
+				scheduler->_lastFixedUpdateTime = timer.invokeTime;
 			}
 		} forTarget:self withDelay:0];
 
@@ -434,10 +437,33 @@ PrioritySearch(NSArray *array, NSInteger priority)
 {
 	for(NSUInteger i=0, count=array.count; i<count; i++){
 		CCScheduledTarget *scheduledTarget = array[i];
-		if(scheduledTarget.target.priority > priority) return i;
+		if(scheduledTarget.priority >= priority) return i;
 	}
 	
 	return array.count;
+}
+
+// These methods implement a copy-on-write like behavior for the update arrays.
+// The arrays are locked during iteration. In order to mutate them they have to be copied first.
+
+-(NSMutableArray *)updatesCOW
+{
+	if(_updatesLocked){
+		_updates = [_updates mutableCopy];
+		_updatesLocked = NO;
+	}
+	
+	return _updates;
+}
+
+-(NSMutableArray *)fixedUpdatesCOW
+{
+	if(_fixedUpdatesLocked){
+		_fixedUpdates = [_fixedUpdates mutableCopy];
+		_fixedUpdatesLocked = NO;
+	}
+	
+	return _fixedUpdates;
 }
 
 -(void)scheduleTarget:(NSObject<CCSchedulerTarget> *)target
@@ -454,8 +480,8 @@ PrioritySearch(NSArray *array, NSInteger priority)
 			scheduledTarget.enableUpdates = YES;
 			NSInteger priority = target.priority;
 			
-			if(update) [_updates insertObject:scheduledTarget atIndex:PrioritySearch(_updates, priority)];
-			if(fixedUpdate) [_fixedUpdates insertObject:scheduledTarget atIndex:PrioritySearch(_fixedUpdates, priority)];
+			if(update) [self.updatesCOW insertObject:scheduledTarget atIndex:PrioritySearch(_updates, priority)];
+			if(fixedUpdate) [self.fixedUpdatesCOW insertObject:scheduledTarget atIndex:PrioritySearch(_fixedUpdates, priority)];
 		}
 	}
 }
@@ -468,11 +494,11 @@ PrioritySearch(NSArray *array, NSInteger priority)
 		// Remove the update methods if they are scheduled
 		if(scheduledTarget.enableUpdates){
 			if([scheduledTarget.target respondsToSelector:@selector(update:)]){
-				[_updates removeObject:scheduledTarget];
+				[self.updatesCOW removeObject:scheduledTarget];
 			}
 			
 			if([scheduledTarget.target respondsToSelector:@selector(fixedUpdate:)]){
-				[_fixedUpdates removeObject:scheduledTarget];
+				[self.fixedUpdatesCOW removeObject:scheduledTarget];
 			}
 		}
 		
@@ -516,7 +542,10 @@ PrioritySearch(NSArray *array, NSInteger priority)
 	CCTime clampedDelta = MIN(dt*_timeScale, _maxTimeStep);
 	[self updateTo:_currentTime + clampedDelta];
 	
+	_updatesLocked = YES;
 	InvokeMethods(_updates, @selector(update:), clampedDelta);
+	_updatesLocked = NO;
+	
 	_lastUpdateTime = _currentTime;
 }
 
