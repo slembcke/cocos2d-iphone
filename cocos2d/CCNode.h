@@ -109,7 +109,7 @@ A common user pattern in building a Cocos2d game is to subclass CCNode, add it t
 	NSMutableArray *_children;
 
 	// Weak ref to parent.
-	__weak CCNode *_parent;
+	__unsafe_unretained CCNode *_parent;
 
 	// A tag any name you want to assign to the node
     NSString* _name;
@@ -374,7 +374,7 @@ A common user pattern in building a Cocos2d game is to subclass CCNode, add it t
 -(void) removeAllChildrenWithCleanup:(BOOL)cleanup;
 
 /** A weak reference to the parent. */
-@property(nonatomic,readwrite,weak) CCNode* parent;
+@property(nonatomic, readwrite, unsafe_unretained) CCNode *parent;
 
 /** Array of child nodes. */
 @property(nonatomic,readonly) NSArray *children;
