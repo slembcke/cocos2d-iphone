@@ -59,15 +59,14 @@
     [[NSUserDefaults standardUserDefaults] setValue:nil forKey:PACKAGE_STORAGE_USERDEFAULTS_KEY];
     [[NSUserDefaults standardUserDefaults] synchronize];
 
-    CCFileUtils* sharedFileUtils = [CCFileUtils sharedFileUtils];
+    CCFileUtilsV2* sharedFileUtils = [CCFileUtilsV2 sharedFileUtils];
 
-    sharedFileUtils.searchPath =
-    [NSArray arrayWithObjects:
-     [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Images"],
-     [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Fonts"],
-     [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Resources-shared"],
-     [[NSBundle mainBundle] resourcePath],
-     nil];
+    sharedFileUtils.searchPaths = @[
+        [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Images"],
+        [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Fonts"],
+        [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Resources-shared"],
+        [[NSBundle mainBundle] resourcePath],
+    ];
 
     // Register spritesheets.
     [[CCSpriteFrameCache sharedSpriteFrameCache] registerSpriteFramesFile:@"Interface.plist"];

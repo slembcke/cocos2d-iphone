@@ -30,7 +30,8 @@
 #import "CCTexture_private.h"
 #import "CCMetalSupport_Private.h"
 
-#import "CCFileUtils.h"
+#import "CCFileUtilsV2.h"
+#import "CCFile.h"
 #import "CCCache.h"
 #import "CCRenderDispatch.h"
 #import "CCDeviceInfo.h"
@@ -227,12 +228,12 @@ CompileShaderSources(GLenum type, NSArray *sources)
 #endif
 	{
 		NSString *fragmentName = [shaderName stringByAppendingPathExtension:@"fsh"];
-		NSString *fragmentPath = [[CCFileUtils sharedFileUtils] fullPathForFilename:fragmentName];
+		NSString *fragmentPath = [[CCFileUtilsV2 sharedFileUtils] fileNamed:fragmentName error:nil].absoluteFilePath;
 		NSAssert(fragmentPath, @"Failed to find '%@'.", fragmentName);
 		NSString *fragmentSource = [NSString stringWithContentsOfFile:fragmentPath encoding:NSUTF8StringEncoding error:nil];
 		
 		NSString *vertexName = [shaderName stringByAppendingPathExtension:@"vsh"];
-		NSString *vertexPath = [[CCFileUtils sharedFileUtils] fullPathForFilename:vertexName];
+		NSString *vertexPath = [[CCFileUtilsV2 sharedFileUtils] fileNamed:vertexName error:nil].absoluteFilePath;
 		NSString *vertexSource = (vertexPath ? [NSString stringWithContentsOfFile:vertexPath encoding:NSUTF8StringEncoding error:nil] : CCDefaultVShader);
 		
 		CCShader *shader = [[CCShader alloc] initWithVertexShaderSource:vertexSource fragmentShaderSource:fragmentSource];

@@ -7,7 +7,7 @@
 //
 
 #import <XCTest/XCTest.h>
-#import "CCFileUtils.h"
+#import "CCFileUtilsV2.h"
 #import "CCSpriteFrameCache.h"
 
 

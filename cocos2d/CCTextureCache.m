@@ -36,7 +36,7 @@
 #import "CCTexturePVR.h"
 #import "CCDeviceInfo.h"
 #import "CCDirector.h"
-#import "CCFileUtils.h"
+#import "CCFileUtilsV2.h"
 #import "CCFile_Private.h"
 #import "CCImage.h"
 
@@ -141,65 +141,66 @@ static CCTextureCache *sharedTextureCache;
 
 -(void) addImageAsync: (NSString*)path target:(id)target selector:(SEL)selector
 {
-	NSAssert(path != nil, @"TextureCache: fileimage MUST not be nill");
-	NSAssert(target != nil, @"TextureCache: target can't be nil");
-	NSAssert(selector != NULL, @"TextureCache: selector can't be NULL");
-
-	// remove possible -HD suffix to prevent caching the same image twice (issue #1040)
-	CCFileUtils *fileUtils = [CCFileUtils sharedFileUtils];
-	path = [fileUtils standarizePath:path];
-
-	// optimization
-	__block CCTexture * tex;
-		
-	dispatch_sync(_dictQueue, ^{
-		tex = [_textures objectForKey:path];
-	});
-
-	if(tex) {
-		typedef void (*Func)(id, SEL, id);
-		((Func)objc_msgSend)(target, selector, tex);
-		return;
-	}
-
-	// dispatch it serially
-	dispatch_async(_loadingQueue, ^{
-
-		CCTexture *texture;
-
-#if __CC_PLATFORM_IOS
-		if( [EAGLContext setCurrentContext:_auxGLcontext] ) {
-
-			// load / create the texture
-			texture = [self addImage:path];
-
-			glFlush();
-
-			// callback should be executed in cocos2d thread
-			[target performSelector:selector onThread:[[CCDirector sharedDirector] runningThread] withObject:texture waitUntilDone:NO];
-
-			[EAGLContext setCurrentContext:nil];
-		} else {
-			CCLOG(@"cocos2d: ERROR: TetureCache: Could not set EAGLContext");
-		}
-
-#elif __CC_PLATFORM_MAC
-
-		[_auxGLcontext makeCurrentContext];
-
-		// load / create the texture
-		texture = [self addImage:path];
-
-		glFlush();
-
-		// callback should be executed in cocos2d thread
-		[target performSelector:selector onThread:[[CCDirector sharedDirector] runningThread] withObject:texture waitUntilDone:NO];
-
-		[NSOpenGLContext clearCurrentContext];
-
-#endif // __CC_PLATFORM_MAC
-
-	});
+    abort();
+//	NSAssert(path != nil, @"TextureCache: fileimage MUST not be nill");
+//	NSAssert(target != nil, @"TextureCache: target can't be nil");
+//	NSAssert(selector != NULL, @"TextureCache: selector can't be NULL");
+//
+//	// remove possible -HD suffix to prevent caching the same image twice (issue #1040)
+//	CCFileUtils *fileUtils = [CCFileUtils sharedFileUtils];
+//	path = [fileUtils standarizePath:path];
+//
+//	// optimization
+//	__block CCTexture * tex;
+//		
+//	dispatch_sync(_dictQueue, ^{
+//		tex = [_textures objectForKey:path];
+//	});
+//
+//	if(tex) {
+//		typedef void (*Func)(id, SEL, id);
+//		((Func)objc_msgSend)(target, selector, tex);
+//		return;
+//	}
+//
+//	// dispatch it serially
+//	dispatch_async(_loadingQueue, ^{
+//
+//		CCTexture *texture;
+//
+//#if __CC_PLATFORM_IOS
+//		if( [EAGLContext setCurrentContext:_auxGLcontext] ) {
+//
+//			// load / create the texture
+//			texture = [self addImage:path];
+//
+//			glFlush();
+//
+//			// callback should be executed in cocos2d thread
+//			[target performSelector:selector onThread:[[CCDirector sharedDirector] runningThread] withObject:texture waitUntilDone:NO];
+//
+//			[EAGLContext setCurrentContext:nil];
+//		} else {
+//			CCLOG(@"cocos2d: ERROR: TetureCache: Could not set EAGLContext");
+//		}
+//
+//#elif __CC_PLATFORM_MAC
+//
+//		[_auxGLcontext makeCurrentContext];
+//
+//		// load / create the texture
+//		texture = [self addImage:path];
+//
+//		glFlush();
+//
+//		// callback should be executed in cocos2d thread
+//		[target performSelector:selector onThread:[[CCDirector sharedDirector] runningThread] withObject:texture waitUntilDone:NO];
+//
+//		[NSOpenGLContext clearCurrentContext];
+//
+//#endif // __CC_PLATFORM_MAC
+//
+//	});
 }
 
 //-(void) addImageAsync:(NSString*)path withBlock:(void(^)(CCTexture *tex))block
@@ -270,8 +271,7 @@ static CCTextureCache *sharedTextureCache;
 	NSAssert(path != nil, @"TextureCache: fileimage MUST not be nil");
 
 	// remove possible -HD suffix to prevent caching the same image twice (issue #1040)
-	CCFileUtils *fileUtils = [CCFileUtils sharedFileUtils];
-	path = [fileUtils standarizePath:path];
+	path = [path stringByStandardizingPath];
 
 	__block CCTexture * tex = nil;
 
@@ -280,9 +280,10 @@ static CCTextureCache *sharedTextureCache;
 	});
 
 	if( ! tex ) {
-
-		CGFloat contentScale;
-		NSString *fullpath = [fileUtils fullPathForFilename:path contentScale:&contentScale];
+        CCFile *file = [[CCFileUtilsV2 sharedFileUtils] imageNamed:path error:nil];
+        
+		CGFloat contentScale = file.contentScale;
+		NSString *fullpath = file.absoluteFilePath;
 		if( ! fullpath ) {
 			CCLOG(@"cocos2d: Couldn't find file:%@", path);
 			return nil;
@@ -295,8 +296,6 @@ static CCTextureCache *sharedTextureCache;
         if([lowerCase hasSuffix:@".pvr"] || [lowerCase hasSuffix:@".pvr.gz"] || [lowerCase hasSuffix:@".pvr.ccz"]){
             tex = [self addPVRImage:path];
         } else {
-            NSURL *url = [NSURL fileURLWithPath:fullpath];
-            CCFile *file = [[CCFile alloc] initWithName:path url:url contentScale:contentScale];
             CCImage *image = [[CCImage alloc] initWithCCFile:file options:nil];
             tex = [[CCTexture alloc] initWithImage:image options:nil];
 
@@ -416,8 +415,7 @@ static CCTextureCache *sharedTextureCache;
 	NSAssert(path != nil, @"TextureCache: fileimage MUST not be nill");
 
 	// remove possible -HD suffix to prevent caching the same image twice (issue #1040)
-	CCFileUtils *fileUtils = [CCFileUtils sharedFileUtils];
-	path = [fileUtils standarizePath:path];
+	path = [path stringByStandardizingPath];
 
 	__block CCTexture * tex;
 	

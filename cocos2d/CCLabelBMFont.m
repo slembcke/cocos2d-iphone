@@ -41,7 +41,8 @@
 #import "CCDeviceInfo.h"
 #import "CCTexture.h"
 #import "CCTextureCache.h"
-#import "CCFileUtils.h"
+#import "CCFileUtilsV2.h"
+#import "CCFile.h"
 #import "CCColor.h"
 #import "ccUtils.h"
 
@@ -156,7 +157,8 @@ void FNTConfigRemoveCache( void )
 
 - (NSMutableString *)parseConfigFile:(NSString*)fntFile
 {
-	NSString *fullpath = [[CCFileUtils sharedFileUtils] fullPathForFilename:fntFile];
+    CCFile *file = [[CCFileUtilsV2 sharedFileUtils] imageNamed:fntFile error:nil];
+	NSString *fullpath = file.absoluteFilePath;
 	NSError *error;
 	NSString *contents = [NSString stringWithContentsOfFile:fullpath encoding:NSUTF8StringEncoding error:&error];
   

@@ -37,7 +37,7 @@
 #import "CCTMXXMLParser.h"
 #import "CCTiledMap.h"
 #import "CCTiledMapObjectGroup.h"
-#import "CCFileUtils.h"
+#import "CCFileUtilsV2.h"
 
 #import "CCFile_Private.h"
 
@@ -207,9 +207,8 @@
 
 - (void) parseXMLFile:(NSString *)xmlFilename
 {
-	NSURL *url = [NSURL fileURLWithPath:[[CCFileUtils sharedFileUtils] fullPathForFilename:xmlFilename contentScale:&_contentScale]];
-	NSData *data = [NSData dataWithContentsOfURL:url];
-	[self parseXMLData:data];
+    CCFile *file = [[CCFileUtilsV2 sharedFileUtils] imageNamed:xmlFilename error:nil];
+    [self parseXMLData:[file loadData:nil]];
 }
 
 // the XML parser calls here with all the elements

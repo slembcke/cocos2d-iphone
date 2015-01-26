@@ -31,7 +31,8 @@
 #import "CCDirector_Private.h"
 #import "CCAnimationManager_Private.h"
 
-#import "CCFileUtils.h"
+#import "CCFileUtilsV2.h"
+#import "CCFile.h"
 #import "CGPointExtension.h"
 #import "CCBSequence.h"
 #import "CCBKeyframe.h"
@@ -79,44 +80,6 @@
 
 + (void) configureCCFileUtils
 {
-    CCFileUtils *sharedFileUtils = [CCFileUtils sharedFileUtils];
-    
-    // Setup file utils for use with SpriteBuilder
-    [sharedFileUtils setEnableiPhoneResourcesOniPad:NO];
-    
-    sharedFileUtils.directoriesDict =
-    [[NSMutableDictionary alloc] initWithObjectsAndKeys:
-     @"resources-tablet", CCFileUtilsSuffixiPad,
-     @"resources-tablethd", CCFileUtilsSuffixiPadHD,
-     @"resources-phone", CCFileUtilsSuffixiPhone,
-     @"resources-phonehd", CCFileUtilsSuffixiPhoneHD,
-     @"resources-phone", CCFileUtilsSuffixiPhone5,
-     @"resources-phonehd", CCFileUtilsSuffixiPhone5HD,
-     @"resources-phone", CCFileUtilsSuffixMac,
-     @"resources-phonehd", CCFileUtilsSuffixMacHD,
-     @"", CCFileUtilsSuffixDefault,
-     nil];
-    
-#if __CC_PLATFORM_ANDROID
-    sharedFileUtils.searchPath =
-    [NSArray arrayWithObjects:
-     [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Published-Android"],
-     [[NSBundle mainBundle] resourcePath],
-     nil];
-#else
-    sharedFileUtils.searchPath =
-    [NSArray arrayWithObjects:
-     [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Published-iOS"],
-     [[NSBundle mainBundle] resourcePath],
-     nil];
-#endif
-    
-	sharedFileUtils.enableiPhoneResourcesOniPad = YES;
-    sharedFileUtils.searchMode = CCFileUtilsSearchModeDirectory;
-    [sharedFileUtils buildSearchResolutionsOrder];
-    
-    [sharedFileUtils loadFilenameLookupDictionaryFromFile:@"fileLookup.plist"];
-    [[CCSpriteFrameCache sharedSpriteFrameCache] loadSpriteFrameLookupDictionaryFromFile:@"spriteFrameFileList.plist"];
 }
 
 - (id) init
@@ -874,8 +837,8 @@ static inline float readFloat(CCBReader *self)
 #endif
 
         // Load sub file
-        NSString* path = [[CCFileUtils sharedFileUtils] fullPathForFilename:ccbFileName];
-        NSData* d = [NSData dataWithContentsOfFile:path];
+        CCFile *file = [[CCFileUtilsV2 sharedFileUtils] fileNamed:ccbFileName error:nil];
+        NSData *d = [file loadData:nil];
 
 #if DEBUG
         // Special case: scroll view missing content node
@@ -1876,8 +1839,8 @@ SelectorNameForProperty(objc_property_t property)
     // Add ccbi suffix
     if (![file hasSuffix:@".ccbi"]) file = [file stringByAppendingString:@".ccbi"];
     
-    NSString* path = [[CCFileUtils sharedFileUtils] fullPathForFilename:file];
-    NSData* d = [NSData dataWithContentsOfFile:path];
+    CCFile *f = [[CCFileUtilsV2 sharedFileUtils] fileNamed:file error:nil];
+    NSData *d = [f loadData:nil];
 
     self.currentCCBFile = file;
 
@@ -1896,9 +1859,9 @@ SelectorNameForProperty(objc_property_t property)
 
 +(void) setResourcePath:(NSString *)searchPath
 {
-	NSMutableArray *array = [[[CCFileUtils sharedFileUtils] searchPath] mutableCopy];
+	NSMutableArray *array = [[[CCFileUtilsV2 sharedFileUtils] searchPaths] mutableCopy];
 	[array addObject:searchPath];
-	[[CCFileUtils sharedFileUtils] setSearchPath:array];
+	[[CCFileUtilsV2 sharedFileUtils] setSearchPaths:array];
 }
 
 + (CCBReader*) reader

@@ -24,7 +24,8 @@
 
 #import "CCBLocalizationManager.h"
 #import "CCBReader.h"
-#import "CCFileUtils.h"
+#import "CCFileUtilsV2.h"
+#import "CCfile.h"
 
 @implementation CCBLocalizationManager
 
@@ -53,7 +54,7 @@
 - (void) loadStringsFile:(NSString*) file
 {
     // Load default localization dictionary
-    NSString* path = [[CCFileUtils sharedFileUtils] fullPathForFilename:file];
+    NSString* path = [[CCFileUtilsV2 sharedFileUtils] imageNamed:file error:nil].absoluteFilePath;
     
     // Load strings file
     NSDictionary* ser = [NSDictionary dictionaryWithContentsOfFile:path];

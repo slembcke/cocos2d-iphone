@@ -48,7 +48,7 @@
 #import "ccMacros.h"
 
 #import "CCParticleSystemBase_Private.h"
-#import "CCFileUtils.h"
+#import "CCFileUtilsV2.h"
 #import "CCRendererBasicTypes.h"
 #import "CCTextureCache.h"
 #import "CCColor.h"
@@ -89,8 +89,8 @@
 
 -(id) initWithFile:(NSString *)plistFile
 {
-	NSString *path = [[CCFileUtils sharedFileUtils] fullPathForFilename:plistFile];
-	NSDictionary *dict = [NSDictionary dictionaryWithContentsOfFile:path];
+    CCFile *file = [[CCFileUtilsV2 sharedFileUtils] imageNamed:plistFile error:nil];
+    NSDictionary *dict = [file loadPlist:nil];
 
 	NSAssert( dict != nil, @"Particles: file not found");
 	

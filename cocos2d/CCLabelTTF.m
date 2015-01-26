@@ -30,7 +30,8 @@
 #import "Support/CGPointExtension.h"
 #import "ccMacros.h"
 #import "CCShader.h"
-#import "Support/CCFileUtils.h"
+#import "CCFileUtilsV2.h"
+#import "CCFile.h"
 #import "ccMacros.h"
 #import "ccUtils.h"
 #import "NSAttributedString+CCAdditions.h"
@@ -960,10 +961,10 @@ static __strong NSMutableDictionary* ccLabelTTF_registeredFonts;
     if ([[fontFile lowercaseString] hasSuffix:@".ttf"] || [[fontFile lowercaseString] hasSuffix:@".otf"])
     {
         // This is a file, register font with font manager
-        NSString* fontPath = [[CCFileUtils sharedFileUtils] fullPathForFilename:fontFile];
-        NSCAssert(fontPath != nil, @"FontFile can not be located");
+        CCFile *file = [[CCFileUtilsV2 sharedFileUtils] fileNamed:fontFile error:nil];
+        NSCAssert(file != nil, @"FontFile can not be located");
         
-        NSURL* fontURL = [NSURL fileURLWithPath:fontPath];
+        NSURL* fontURL = file.url;
         CTFontManagerRegisterFontsForURL((__bridge CFURLRef)fontURL, kCTFontManagerScopeProcess, NULL);
         NSString *fontName = nil;
 

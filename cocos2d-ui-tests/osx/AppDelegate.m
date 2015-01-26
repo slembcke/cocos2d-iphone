@@ -33,23 +33,15 @@
 	// Center main window
 	[window_ center];
     
-    CCFileUtils* fileUtils = [CCFileUtils sharedFileUtils];
+    CCFileUtilsV2 *fileUtils = [CCFileUtilsV2 sharedFileUtils];
     
-    fileUtils.directoriesDict = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
-                                 @"resources-tablet", CCFileUtilsSuffixDefault,
-                                 nil];
-    fileUtils.searchPath = [NSArray arrayWithObjects:
-                            [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Images"],
-                            [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Fonts"],
-                            [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Resources-shared"],
-                            [[NSBundle mainBundle] resourcePath],
-                            nil];
+    fileUtils.searchPaths = @[
+        [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Images"],
+        [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Fonts"],
+        [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Resources-shared"],
+        [[NSBundle mainBundle] resourcePath],
+    ];
     
-    fileUtils.searchMode = CCFileUtilsSearchModeDirectory;
-    [fileUtils buildSearchResolutionsOrder];
-    
-    [fileUtils loadFilenameLookupDictionaryFromFile:@"fileLookup.plist"];
-		
     // Register spritesheets.
     [[CCSpriteFrameCache sharedSpriteFrameCache] registerSpriteFramesFile:@"Interface.plist"];
     [[CCSpriteFrameCache sharedSpriteFrameCache] registerSpriteFramesFile:@"Sprites.plist"];

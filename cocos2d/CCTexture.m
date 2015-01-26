@@ -82,8 +82,9 @@
 #import "CCRenderDispatch.h"
 #import "CCImage.h"
 
-#import "Support/ccUtils.h"
-#import "Support/CCFileUtils.h"
+#import "ccUtils.h"
+#import "CCFileUtilsV2.h"
+#import "CCFile.h"
 
 #import "CCTexture_Private.h"
 #import "CCTextureCache.h"
@@ -514,8 +515,10 @@ static BOOL _PVRHaveAlphaPremultiplied = YES;
 
 -(id) initWithPVRFile: (NSString*) relPath
 {
-	CGFloat contentScale;
-	NSString *fullpath = [[CCFileUtils sharedFileUtils] fullPathForFilename:relPath contentScale:&contentScale];
+    CCFile *file = [[CCFileUtilsV2 sharedFileUtils] imageNamed:relPath error:nil];
+	CGFloat contentScale = file.contentScale;
+    
+	NSString *fullpath = file.absoluteFilePath;
 
 	if( (self = [super init]) ) {
 		CCTexturePVR *pvr = [[CCTexturePVR alloc] initWithContentsOfFile:fullpath];

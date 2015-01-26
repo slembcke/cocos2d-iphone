@@ -142,7 +142,7 @@
 #import "CCPackage.h"
 #import "CCDeviceInfo.h"
 #import "CCFile.h"
-#import "Support/CCFileUtils.h"
+#import "Support/CCFileUtilsV2.h"
 #import "Support/CGPointExtension.h"
 #import "Support/ccUtils.h"
 #import "Support/uthash.h"

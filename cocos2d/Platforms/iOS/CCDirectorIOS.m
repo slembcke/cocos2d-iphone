@@ -47,7 +47,6 @@
 #import "ccFPSImages.h"
 #import "CCDeviceInfo.h"
 #import "CCTouch.h"
-#import "Support/CCFileUtils.h"
 
 #pragma mark -
 #pragma mark Director

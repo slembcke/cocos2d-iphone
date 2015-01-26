@@ -49,7 +49,7 @@
 #import "CCDeviceInfo.h"
 #import "CCTransition.h"
 #import "Platforms/CCNS.h"
-#import "Support/CCFileUtils.h"
+#import "CCFileUtilsV2.h"
 
 #if __CC_PLATFORM_IOS
 #import "Platforms/iOS/CCDirectorIOS.h"
@@ -333,7 +333,7 @@ static CCDirector *_sharedDirector = nil;
 	[CCLabelBMFont purgeCachedData];
 	if ([_sharedDirector view])
 		[[CCTextureCache sharedTextureCache] removeUnusedTextures];
-	[[CCFileUtils sharedFileUtils] purgeCachedEntries];
+	[[CCFileUtilsV2 sharedFileUtils] purgeCache];
 }
 
 #pragma mark Director - Scene OpenGL Helper
@@ -413,7 +413,6 @@ static CCDirector *_sharedDirector = nil;
 		// update projection
 		[self setProjection:_projection];
 		
-		[[CCFileUtils sharedFileUtils] buildSearchResolutionsOrder];
 		[self createStatsLabel];
 	}
 }
@@ -691,7 +690,7 @@ static CCDirector *_sharedDirector = nil;
 	[CCAnimationCache purgeSharedAnimationCache];
 	[CCSpriteFrameCache purgeSharedSpriteFrameCache];
 	[CCTextureCache purgeSharedTextureCache];
-	[[CCFileUtils sharedFileUtils] purgeCachedEntries];
+	[[CCFileUtilsV2 sharedFileUtils] purgeCache];
 
 	// OpenGL view
 
@@ -956,7 +955,7 @@ static const float CCFPSLabelItemHeight = 32;
 		_SPFLabel = nil;
 		_drawsLabel = nil;
 		
-		[[CCFileUtils sharedFileUtils] purgeCachedEntries];
+		[[CCFileUtilsV2 sharedFileUtils] purgeCache];
 	}
 
 	CCTexturePixelFormat currentFormat = [CCTexture defaultAlphaPixelFormat];

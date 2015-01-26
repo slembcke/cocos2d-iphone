@@ -32,7 +32,8 @@
 #import "CCSpriteFrameCache.h"
 #import "CCAnimation.h"
 #import "CCSprite.h"
-#import "Support/CCFileUtils.h"
+#import "CCFileUtilsV2.h"
+#import "CCFile.h"
 
 
 @implementation CCAnimationCache
@@ -231,8 +232,8 @@ static CCAnimationCache *_sharedAnimationCache=nil;
 {
 	NSAssert( plist, @"Invalid texture file name");
 
-    NSString *path = [[CCFileUtils sharedFileUtils] fullPathForFilename:plist];
-	NSDictionary *dict = [NSDictionary dictionaryWithContentsOfFile:path];
+    CCFile *file = [[CCFileUtilsV2 sharedFileUtils] fileNamed:plist error:nil];
+	NSDictionary *dict = [file loadPlist:nil];
 
 	NSAssert1( dict, @"CCAnimationCache: File could not be found: %@", plist);
 

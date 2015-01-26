@@ -10,7 +10,8 @@
 #import "CCAnimationManager_Private.h"
 #import "CCSpriteFrame.h"
 #import "CCSpriteFrameCache.h"
-#import "CCFileUtils.h"
+#import "CCFileUtilsV2.h"
+#import "CCFile.h"
 
 @implementation CCAnimationManager (FrameAnimation)
 
@@ -154,8 +155,8 @@
 
 - (void)addAnimationsWithFile:(NSString *)plist node:(CCNode*)node {
     
-    NSString *path     = [[CCFileUtils sharedFileUtils] fullPathForFilename:plist];
-	NSDictionary *dict = [NSDictionary dictionaryWithContentsOfFile:path];
+    CCFile *file = [[CCFileUtilsV2 sharedFileUtils] fileNamed:plist error:nil];
+	NSDictionary *dict = [file loadPlist:nil];
     
 	NSAssert1( dict, @"Animation file could not be found: %@", plist);
     
