@@ -159,7 +159,7 @@ static CCSpriteFrameCache *_sharedSpriteFrameCache=nil;
 {
 	NSAssert(plist, @"plist filename should not be nil");
     
-    CCFile *file = [[CCFileUtilsV2 sharedFileUtils] fileNamed:plist error:nil];
+    CCFile *file = [[CCFileUtilsV2 sharedFileUtils] imageNamed:plist error:nil];
     NSDictionary *dictionary = [file loadPlist:nil];
     
     NSDictionary *metadataDict = [dictionary objectForKey:@"metadata"];
