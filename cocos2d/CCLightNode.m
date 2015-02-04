@@ -94,23 +94,23 @@
     _groupMask = [lightCollection maskForGroups:_groups];
 }
 
--(void)setIntensity:(float)intensity
-{
-    NSCAssert((intensity >= 0.0) && (intensity <= 1.0), @"Supplied intensity out of range [0..1].");
-    _intensity = clampf(intensity, 0.0f, 1.0f);
-}
-
--(void)setSpecularIntensity:(float)intensity
-{
-    NSCAssert((intensity >= 0.0) && (intensity <= 1.0), @"Supplied intensity out of range [0..1].");
-    _specularIntensity = clampf(intensity, 0.0f, 1.0f);
-}
-
--(void)setAmbientIntensity:(float)intensity
-{
-    NSCAssert((intensity >= 0.0) && (intensity <= 1.0), @"Supplied intensity out of range [0..1].");
-    _ambientIntensity = clampf(intensity, 0.0f, 1.0f);
-}
+//-(void)setIntensity:(float)intensity
+//{
+//    NSCAssert((intensity >= 0.0) && (intensity <= 1.0), @"Supplied intensity out of range [0..1].");
+//    _intensity = clampf(intensity, 0.0f, 1.0f);
+//}
+//
+//-(void)setSpecularIntensity:(float)intensity
+//{
+//    NSCAssert((intensity >= 0.0) && (intensity <= 1.0), @"Supplied intensity out of range [0..1].");
+//    _specularIntensity = intensity;//clampf(intensity, 0.0f, 1.0f);
+//}
+//
+//-(void)setAmbientIntensity:(float)intensity
+//{
+//    NSCAssert((intensity >= 0.0) && (intensity <= 1.0), @"Supplied intensity out of range [0..1].");
+//    _ambientIntensity = clampf(intensity, 0.0f, 1.0f);
+//}
 
 -(void)setCutoffRadius:(float)radius
 {

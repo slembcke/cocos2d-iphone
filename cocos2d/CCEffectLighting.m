@@ -57,6 +57,26 @@ static float conditionShininess(float shininess);
 
 @implementation CCEffectLightingImpl
 
+static NSMutableArray *LightFalloffKeys = nil;
+static NSMutableArray *LightColorKeys = nil;
+static NSMutableArray *LightVectorKeys = nil;
+static NSMutableArray *LightSpecularColorKeys = nil;
+
++(void)initialize
+{
+    LightFalloffKeys = [NSMutableArray array];
+    LightColorKeys = [NSMutableArray array];
+    LightVectorKeys = [NSMutableArray array];
+    LightSpecularColorKeys = [NSMutableArray array];
+    
+    for(int i=0; i<CCEffectLightingMaxLightCount; i++){
+        [LightFalloffKeys addObject:[NSString stringWithFormat:@"u_lightFalloff%d", i]];
+        [LightColorKeys addObject:[NSString stringWithFormat:@"u_lightColor%d", i]];
+        [LightVectorKeys addObject:[NSString stringWithFormat:@"u_lightVector%d", i]];
+        [LightSpecularColorKeys addObject:[NSString stringWithFormat:@"u_lightSpecularColor%d", i]];
+    }
+}
+
 -(id)initWithInterface:(CCEffectLighting *)interface
 {
     NSMutableArray *fragUniforms = [[NSMutableArray alloc] initWithArray:@[
@@ -73,16 +93,16 @@ static float conditionShininess(float shininess);
     {
         CCLightNode *light = interface.closestLights[lightIndex];
         
-        [vertUniforms addObject:[CCEffectUniform uniform:@"vec3" name:[NSString stringWithFormat:@"u_lightVector%lu", (unsigned long)lightIndex] value:[NSValue valueWithGLKVector3:GLKVector3Make(0.0f, 0.0f, 0.0f)]]];
-        [fragUniforms addObject:[CCEffectUniform uniform:@"vec4" name:[NSString stringWithFormat:@"u_lightColor%lu", (unsigned long)lightIndex] value:[NSValue valueWithGLKVector4:GLKVector4Make(1.0f, 1.0f, 1.0f, 1.0f)]]];
+        [vertUniforms addObject:[CCEffectUniform uniform:@"vec3" name:LightVectorKeys[lightIndex] value:[NSValue valueWithGLKVector3:GLKVector3Make(0.0f, 0.0f, 0.0f)]]];
+        [fragUniforms addObject:[CCEffectUniform uniform:@"vec4" name:LightColorKeys[lightIndex] value:[NSValue valueWithGLKVector4:GLKVector4Make(1.0f, 1.0f, 1.0f, 1.0f)]]];
         if (interface.needsSpecular)
         {
-            [fragUniforms addObject:[CCEffectUniform uniform:@"vec4" name:[NSString stringWithFormat:@"u_lightSpecularColor%lu", (unsigned long)lightIndex] value:[NSValue valueWithGLKVector4:GLKVector4Make(1.0f, 1.0f, 1.0f, 1.0f)]]];
+            [fragUniforms addObject:[CCEffectUniform uniform:@"vec4" name:LightSpecularColorKeys[lightIndex] value:[NSValue valueWithGLKVector4:GLKVector4Make(1.0f, 1.0f, 1.0f, 1.0f)]]];
         }
         
         if (light.type != CCLightDirectional)
         {
-            [fragUniforms addObject:[CCEffectUniform uniform:@"vec4" name:[NSString stringWithFormat:@"u_lightFalloff%lu", (unsigned long)lightIndex] value:[NSValue valueWithGLKVector4:GLKVector4Make(-1.0f, 1.0f, -1.0f, 1.0f)]]];
+            [fragUniforms addObject:[CCEffectUniform uniform:@"vec4" name:LightFalloffKeys[lightIndex] value:[NSValue valueWithGLKVector4:GLKVector4Make(-1.0f, 1.0f, -1.0f, 1.0f)]]];
         }
         
         [varyings addObject:[CCEffectVarying varying:@"highp vec3" name:[NSString stringWithFormat:@"v_worldSpaceLightDir%lu", (unsigned long)lightIndex]]];
@@ -307,24 +327,24 @@ static float conditionShininess(float shininess);
                     }
                 }
                 
-                NSString *lightFalloffLabel = [NSString stringWithFormat:@"u_lightFalloff%lu", (unsigned long)lightIndex];
+                NSString *lightFalloffLabel = LightFalloffKeys[lightIndex];
                 passInputs.shaderUniforms[pass.uniformTranslationTable[lightFalloffLabel]] = [NSValue valueWithGLKVector4:falloffTerms];
             }
             
             // Compute the real light color based on color and intensity.
             GLKVector4 lightColor = GLKVector4MultiplyScalar(light.color.glkVector4, light.intensity);
             
-            NSString *lightColorLabel = [NSString stringWithFormat:@"u_lightColor%lu", (unsigned long)lightIndex];
+            NSString *lightColorLabel = LightColorKeys[lightIndex];
             passInputs.shaderUniforms[pass.uniformTranslationTable[lightColorLabel]] = [NSValue valueWithGLKVector4:lightColor];
 
-            NSString *lightVectorLabel = [NSString stringWithFormat:@"u_lightVector%lu", (unsigned long)lightIndex];
+            NSString *lightVectorLabel = LightVectorKeys[lightIndex];
             passInputs.shaderUniforms[pass.uniformTranslationTable[lightVectorLabel]] = [NSValue valueWithGLKVector3:GLKVector3Make(lightVector.x, lightVector.y, lightVector.z)];
 
             if (weakInterface.needsSpecular)
             {
                 GLKVector4 lightSpecularColor = GLKVector4MultiplyScalar(light.specularColor.glkVector4, light.specularIntensity);
 
-                NSString *lightSpecularColorLabel = [NSString stringWithFormat:@"u_lightSpecularColor%lu", (unsigned long)lightIndex];
+                NSString *lightSpecularColorLabel = LightSpecularColorKeys[lightIndex];
                 passInputs.shaderUniforms[pass.uniformTranslationTable[lightSpecularColorLabel]] = [NSValue valueWithGLKVector4:lightSpecularColor];
             }
         }
