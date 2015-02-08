@@ -422,35 +422,33 @@
 #pragma mark DirectorDisplayLink
 
 
-@implementation CCDirectorDisplayLink
+@implementation CCDirectorDisplayLink {
+    dispatch_semaphore_t _semaphore;
+}
 
-- (CVReturn) getFrameForTime:(const CVTimeStamp*)outputTime
+-(instancetype)init
 {
-    @autoreleasepool
-    {
-#if (CC_DIRECTOR_MAC_THREAD == CC_MAC_USE_DISPLAY_LINK_THREAD)
-        if( ! _runningThread )
-            _runningThread = [NSThread currentThread];
-
-		[self drawScene];
-
-		// Process timers and other events
-		[[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:nil];
-
-			
-#else
-		[self performSelector:@selector(drawScene) onThread:_runningThread withObject:nil waitUntilDone:YES];
-#endif
-
-        return kCVReturnSuccess;
+    if((self = [super init])){
+        _semaphore = dispatch_semaphore_create(1);
     }
+    
+    return self;
 }
 
 // This is the renderer output callback function
 static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext)
 {
-    CVReturn result = [(__bridge CCDirectorDisplayLink*)displayLinkContext getFrameForTime:outputTime];
-    return result;
+    CCDirectorDisplayLink *director = (__bridge CCDirectorDisplayLink *)displayLinkContext;
+    dispatch_semaphore_t semaphore = director->_semaphore;
+    
+    if(!dispatch_semaphore_wait(semaphore, 0)){
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [director drawScene];
+            dispatch_semaphore_signal(semaphore);
+        });
+    }
+    
+    return kCVReturnSuccess;
 }
 
 - (void) startAnimation
@@ -517,22 +515,6 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTime
 	if( displayLink ) {
 		CVDisplayLinkStop(displayLink);
 		CVDisplayLinkRelease(displayLink);
-	}
-}
-
-//
-// Mac Director has its own thread
-//
--(void) mainLoop
-{
-	while( ![[NSThread currentThread] isCancelled] ) {
-		// There is no autorelease pool when this method is called because it will be called from a background thread
-		// It's important to create one or you will leak objects
-		@autoreleasepool {
-
-			[[NSRunLoop currentRunLoop] run];
-
-		}
 	}
 }
 
