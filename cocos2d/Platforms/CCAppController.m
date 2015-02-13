@@ -41,6 +41,10 @@ static CGFloat FindPOTScale(CGFloat size, CGFloat fixedSize)
 @implementation CCAppController
 {
     NSDictionary *_cocosConfig;
+    
+#if __CC_PLATFORM_IOS
+    UIWindow *_windowIOS;
+#endif
 }
 
 - (instancetype)init
@@ -114,11 +118,21 @@ static CGFloat FindPOTScale(CGFloat size, CGFloat fixedSize)
 - (void)setupIOS
 {
     _cocosConfig = [self iosConfig];
+    NSDictionary *config = _cocosConfig;
 
     CCAppDelegate *appDelegate = (CCAppDelegate*)[UIApplication sharedApplication].delegate;
-    [appDelegate constructWindow];
+    _windowIOS = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
 
-    _glView = [appDelegate constructView:_cocosConfig withBounds:appDelegate.window.bounds];
+    CCViewiOSGL *view = [CCViewiOSGL
+        viewWithFrame:_windowIOS.bounds
+        pixelFormat:config[CCSetupPixelFormat] ?: kEAGLColorFormatRGBA8
+        depthFormat:[config[CCSetupDepthFormat] unsignedIntValue]
+        preserveBackbuffer:[config[CCSetupPreserveBackbuffer] boolValue]
+        sharegroup:nil
+        multiSampling:[config[CCSetupMultiSampling] boolValue]
+        numberOfSamples:[config[CCSetupNumberOfSamples] unsignedIntValue]
+    ];
+    _glView = view;
     
     CCDirector *director = _glView.director;
     NSAssert(director, @"CCView failed to construct a director.");
@@ -134,12 +148,22 @@ static CGFloat FindPOTScale(CGFloat size, CGFloat fixedSize)
     
     // Initialise OpenAL
     [OALSimpleAudio sharedInstance];
-
-    [appDelegate constructNavController:_cocosConfig];
+    
+    UIViewController *viewController = [[UIViewController alloc] init];
+    viewController.view = view;
+    
+    UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:viewController];
+    navController.navigationBarHidden = YES;
+    _windowIOS.rootViewController = navController;
+    
     [[CCPackageManager sharedManager] loadPackages];
     
-    [appDelegate.window makeKeyAndVisible];
-    [appDelegate forceOrientation];
+    [_windowIOS makeKeyAndVisible];
+    _windowIOS.backgroundColor = [UIColor blueColor];
+//    view.backgroundColor = [UIColor redColor];
+    
+    // TODO rotation hack
+//    [[UIApplication sharedApplication] setStatusBarOrientation:UIDeviceOrientationLandscapeLeft | UIDeviceOrientationLandscapeRight];
 
     [CCDirector popCurrentDirector];
     
@@ -154,8 +178,7 @@ static CGFloat FindPOTScale(CGFloat size, CGFloat fixedSize)
 
 - (void)configureDirector:(CCDirector *)director withConfig:(NSDictionary *)config withView:(CC_VIEW <CCView> *)ccview
 {
-    CCDirectorIOS*directorIOS = (CCDirectorIOS*) director;
-    directorIOS.wantsFullScreenLayout = YES;
+    CCDirectorIOS *directorIOS = (CCDirectorIOS*) director;
 
     // Display FSP and SPF
     [directorIOS setDisplayStats:[config[CCSetupShowDebugStats] boolValue]];
@@ -165,9 +188,6 @@ static CGFloat FindPOTScale(CGFloat size, CGFloat fixedSize)
     [directorIOS setAnimationInterval:animationInterval];
 
     directorIOS.fixedUpdateInterval = [(config[CCSetupFixedUpdateInterval] ?: @(1.0/60.0)) doubleValue];
-
-    // attach the openglView to the director
-    [directorIOS setView:ccview];
 }
 
 - (void)setupFlexibleScreenMode:(NSDictionary *)config director:(CCDirector *)director

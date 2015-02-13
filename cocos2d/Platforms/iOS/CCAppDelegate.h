@@ -84,13 +84,13 @@
 @property (nonatomic) CCScene *startScene;
 
 
-- (void)constructNavController:(NSDictionary *)config;
-
-- (void)constructWindow;
-
-- (void)forceOrientation;
-
-- (CC_VIEW <CCView> *)constructView:(NSDictionary *)config withBounds:(CGRect)bounds;
+//- (void)constructNavController:(NSDictionary *)config;
+//
+//- (void)constructWindow;
+//
+//- (void)forceOrientation;
+//
+//- (CC_VIEW <CCView> *)constructView:(NSDictionary *)config withBounds:(CGRect)bounds;
 @end
 
 #endif

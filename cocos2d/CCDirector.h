@@ -117,7 +117,7 @@ typedef NS_ENUM(NSUInteger, CCDirectorProjection) {
 @class CCTransition;
 
 #if __CC_PLATFORM_IOS
-#define CC_VIEWCONTROLLER UIViewController
+#define CC_VIEWCONTROLLER NSObject
 #define CC_VIEW UIView
 
 #elif __CC_PLATFORM_MAC
