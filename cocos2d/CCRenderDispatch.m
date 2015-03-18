@@ -30,27 +30,122 @@
 /// Maximum number of frames that can be queued at once.
 #define CC_RENDER_DISPATCH_MAX_FRAMES 3
 
-/// Dispatch queue that backs the queue.
-static dispatch_queue_t CC_RENDER_DISPATCH_QUEUE = nil;
-/// Semaphore to control the number of in-progress frames being rendered.
-static dispatch_semaphore_t CC_RENDER_DISPATCH_SEMAPHORE = nil;
-/// EAGLContext used by the GL queue
-static EAGLContext *CC_RENDER_DISPATCH_CONTEXT = nil;
+
+@interface CCRenderThread : NSThread @end
+@implementation CCRenderThread {
+    NSMutableArray *_blocks;
+    dispatch_semaphore_t _blocks_available;
+    dispatch_semaphore_t _queued_frames;
+    dispatch_semaphore_t _sync;
+}
+
+-(instancetype)init
+{
+    if((self = [super init])){
+        _blocks = [NSMutableArray array];
+		_blocks_available = dispatch_semaphore_create(0);
+		_queued_frames = dispatch_semaphore_create(CC_RENDER_DISPATCH_MAX_FRAMES);
+        _sync = dispatch_semaphore_create(0);
+    }
+    
+    return self;
+}
+
+-(void)enqueueBlock:(dispatch_block_t)block sync:(BOOL)sync frame:(BOOL)frame
+{
+    if(sync){
+        [self enqueueBlockSync:block frame:frame];
+    } else {
+        [self enqueueBlockAsync:block frame:frame];
+    }
+}
+
+-(void)enqueueBlockSync:(dispatch_block_t)block frame:(BOOL)frame
+{
+    @synchronized(_blocks){
+        dispatch_semaphore_t queued_frames = _queued_frames;
+        dispatch_semaphore_t sync = _sync;
+        [_blocks addObject:^{
+            block();
+            
+            if(frame) dispatch_semaphore_signal(queued_frames);
+            dispatch_semaphore_signal(sync);
+        }];
+    }
+    
+    dispatch_semaphore_signal(_blocks_available);
+    dispatch_semaphore_wait(_sync, DISPATCH_TIME_FOREVER);
+//    @synchronized(_blocks){
+//        dispatch_semaphore_t sync = _sync;
+//        [_blocks addObject:^{dispatch_semaphore_signal(sync);}];
+//    }
+//    
+//    dispatch_semaphore_signal(_blocks_available);
+//    
+//    // Wait for the queue to finish.
+//    dispatch_semaphore_wait(_sync, DISPATCH_TIME_FOREVER);
+//    block();
+//    
+//    if(frame) dispatch_semaphore_signal(_queued_frames);
+}
+
+-(void)enqueueBlockAsync:(dispatch_block_t)block frame:(BOOL)frame
+{
+    @synchronized(_blocks){
+        dispatch_semaphore_t queued_frames = _queued_frames;
+        [_blocks addObject:^{
+            block();
+            
+            if(frame) dispatch_semaphore_signal(queued_frames);
+        }];
+    }
+    
+    dispatch_semaphore_signal(_blocks_available);
+}
+
+-(BOOL)ready
+{
+	return !dispatch_semaphore_wait(_queued_frames, 0);
+}
+
+-(void)main
+{
+    for(;;){
+        dispatch_semaphore_wait(_blocks_available, DISPATCH_TIME_FOREVER);
+        
+        dispatch_block_t block = nil;
+        @synchronized(_blocks){
+            block = _blocks.firstObject;
+            [_blocks removeObjectAtIndex:0];
+        }
+        
+        block();
+    }
+}
+
+@end
+
+
+static CCRenderThread *CC_RENDER_DISPATCH_THREAD = nil;
 
 
 EAGLContext *CCRenderDispatchSetupGL(EAGLRenderingAPI api, EAGLSharegroup *sharegroup)
 {
 	NSCAssert(CC_RENDER_DISPATCH_ENABLED, @"Threaded rendering is not enabled.");
 	
+    static EAGLContext *context = nil;
+    
 	static dispatch_once_t once = 0;
 	dispatch_once(&once, ^{
-		CC_RENDER_DISPATCH_CONTEXT = [[EAGLContext alloc] initWithAPI:api sharegroup:sharegroup];
+		context = [[EAGLContext alloc] initWithAPI:api sharegroup:sharegroup];
 		
-		CC_RENDER_DISPATCH_QUEUE = dispatch_queue_create("CCRenderQueue", DISPATCH_QUEUE_SERIAL);
-		CC_RENDER_DISPATCH_SEMAPHORE = dispatch_semaphore_create(CC_RENDER_DISPATCH_MAX_FRAMES);
+        CC_RENDER_DISPATCH_THREAD = [[CCRenderThread alloc] init];
+        [CC_RENDER_DISPATCH_THREAD start];
+        [CC_RENDER_DISPATCH_THREAD enqueueBlockAsync:^{[EAGLContext setCurrentContext:context];} frame:NO];
+        
 	});
 	
-	return CC_RENDER_DISPATCH_CONTEXT;
+	return context;
 }
 
 #endif
@@ -59,16 +154,7 @@ EAGLContext *CCRenderDispatchSetupGL(EAGLRenderingAPI api, EAGLSharegroup *share
 static void CCRenderDispatchExecute(BOOL threadsafe, BOOL frame, dispatch_block_t block)
 {
 #if CC_RENDER_DISPATCH_ENABLED
-	(threadsafe ? dispatch_async : dispatch_sync)(CC_RENDER_DISPATCH_QUEUE, ^{
-		[EAGLContext setCurrentContext:CC_RENDER_DISPATCH_CONTEXT];
-		
-		block();
-		
-		CC_CHECK_GL_ERROR_DEBUG();
-		[EAGLContext setCurrentContext:nil];
-		
-		if(frame) dispatch_semaphore_signal(CC_RENDER_DISPATCH_SEMAPHORE);
-	});
+        [CC_RENDER_DISPATCH_THREAD enqueueBlock:^{block();} sync:!threadsafe frame:frame];
 #else
 	block();
 #endif
@@ -77,7 +163,7 @@ static void CCRenderDispatchExecute(BOOL threadsafe, BOOL frame, dispatch_block_
 BOOL CCRenderDispatchBeginFrame(void)
 {
 #if CC_RENDER_DISPATCH_ENABLED
-	return !dispatch_semaphore_wait(CC_RENDER_DISPATCH_SEMAPHORE, 0);
+	return [CC_RENDER_DISPATCH_THREAD ready];
 #else
 	return YES;
 #endif

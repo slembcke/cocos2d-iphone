@@ -90,7 +90,7 @@
 	Only valid for cocos2d-iOS. See CCGLQueue.h for more information.
 	*/
 #ifndef CC_DIRECTOR_IOS_THREADED_RENDERING
-#define CC_DIRECTOR_IOS_THREADED_RENDERING 0
+#define CC_DIRECTOR_IOS_THREADED_RENDERING 1
 #endif
 
 /** @def CC_NODE_RENDER_SUBPIXEL
