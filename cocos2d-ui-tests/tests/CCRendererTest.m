@@ -135,6 +135,67 @@
 //	[self.contentNode addChild:sprite];
 //}
 
+-(void)setupNNNTest
+{
+    self.subTitle = @"NNN Filtering";
+    
+    CCSprite *sprite = [CCSprite spriteWithImageNamed:@"Sprites/grossini.png"];
+    sprite.positionType = CCPositionTypeNormalized;
+    sprite.position = ccp(0.5, 0.5);
+    sprite.scale = 8.0;
+    sprite.rotation = 31;
+    
+    [sprite runAction:[CCActionRepeatForever actionWithAction:[CCActionRotateBy actionWithDuration:5.0 angle:90.0]]];
+    
+    CCShader *shader = [[CCShader alloc] initWithFragmentShaderSource:@"#extension GL_OES_standard_derivatives : enable\n"CC_GLSL(
+        uniform vec2 cc_MainTexturePixelSize;
+        
+        void main(){
+            vec2 size = cc_MainTexturePixelSize;
+            vec2 uv = cc_FragTexCoord1*size;
+            
+            float t = 0.5*cc_SinTime[0] + 0.5;
+            vec2 fw = fwidth(uv)/2.0;
+            vec2 fr = fract(uv);
+            
+            vec2 offset = vec2(0.5);
+            if(fr.x < fw.x){
+                offset.x = clamp(fr.x/fw.x/2.0, 0.0, 0.5);
+            } else if(fr.x < 1.0 - fw.x){
+                offset.x = 0.5;
+            } else {
+                offset.x = clamp((fr.x - 1.0 + 2.0*fw.x)/fw.x/2.0, 0.5, 1.0);
+            }
+            
+            if(fr.y < fw.y){
+                offset.y = clamp(fr.y/fw.y/2.0, 0.0, 0.5);
+            } else if(fr.y < 1.0 - fw.y){
+                offset.y = 0.5;
+            } else {
+                offset.y = clamp((fr.y - 1.0 + 2.0*fw.y)/fw.y/2.0, 0.5, 1.0);
+            }
+            
+            gl_FragColor = texture2D(cc_MainTexture, (floor(uv) + offset)/size);
+//            gl_FragColor = vec4(fr.x*size.x, fr.y*size.y, 0, 1);
+        }
+    )];
+    
+    [self addChild:sprite];
+    
+    [sprite runAction:[CCActionRepeatForever actionWithAction:[CCActionSequence actions:
+        [CCActionCallBlock actionWithBlock:^{
+            if(sprite.shader == shader){
+                sprite.shader = [CCShader positionTextureColorShader];
+            } else {
+                sprite.shader = shader;
+            }
+            NSLog(@"Foo?");
+        }],
+        [CCActionDelay actionWithDuration:1.0],
+        nil
+    ]]];
+}
+
 // Tests that vertex paging works so that render passes are not limited to 64k vertexes.
 // If vertex paging is broken, rendering will be broken in a very obvious (but undefined) way.
 -(void)setupVertexPagingTest
